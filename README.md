@@ -1,6 +1,6 @@
-# Skeleton
+# muChirality
 
-Skeleton for numerical projects with Python. This skeleton uses [numpy](https://numpy.org/) and [pytest](https://pytest.org). Rename the `python_skeleton` subdirectory to your module name.
+Project to simulate chiral metamaterials using muSpectre. It uses [muSpectre](https://gitlab.com/muspectre/muspectre), [muTopOpt](https://github.com/IMTEK-Simulation/muTopOpt/tree/main), [numpy](https://numpy.org/) and [pytest](https://pytest.org).
 
 ## Tests
 
