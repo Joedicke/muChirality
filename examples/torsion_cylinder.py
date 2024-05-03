@@ -223,10 +223,10 @@ def test_torsion_cylinder():
         title = 'Stress_' + stress_labels[i] + f' (0.th quad pt) at'
         title += f' z={z[index]}'
         fig.suptitle(title)
-        axes[0, 0].set_title('Value (coarse)')
-        axes[0, 1].set_title('Value (fine)')
-        axes[1, 0].set_title('Error (coarse)')
-        axes[1, 1].set_title('Error (fine)')
+        axes[0, 0].set_title(f'Value (Nx=Ny={Nxy_list[0]})')
+        axes[0, 1].set_title(f'Value (Nx=Ny={Nxy_list[-1]})')
+        axes[1, 0].set_title(f'Error (Nx=Ny={Nxy_list[0]})')
+        axes[1, 1].set_title(f'Error (Nx=Ny={Nxy_list[-1]})')
         axes[0, 0].set_aspect('equal')
         axes[0, 1].set_aspect('equal')
         axes[1, 0].set_aspect('equal')

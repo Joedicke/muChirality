@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_binding
 sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/libmugrid/python"))
 
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 
 import muSpectre as µ
@@ -138,28 +139,33 @@ def plot_chiral_metamaterial():
 def plot_chiral_metamaterial_2():
     ### ----- Parameter definitions ----- ###
     # Unit cell
-    nb_grid_pts = [20, 20, 20]
-    Lxy = 1
+    nb_grid_pts = [50, 50, 50]
 
     # Geometry
-    a = 0.9
-    radius = 0.25
-    n = 2 # thickness in voxels
-    thickness = Lxy / nb_grid_pts[0] * n
-    radius_inn = radius - thickness
-    alpha = 0.2
-    lengths = [Lxy, Lxy, a - 1.5 * thickness]
+    a = 1
+    thickness = 0.06
+    lengths = [a + thickness, a + thickness, a]
+    radius_out = 0.4
+    radius_inn = radius_out - thickness
+    alpha = np.pi * 35 / 180
 
     ### ----- Show + save figures ----- ###
-    figures = plot.plot_2D_chiral_2(nb_grid_pts, lengths, radius,
+    figures = plot.plot_2D_chiral_2(nb_grid_pts, lengths, radius_out,
                                     radius_inn, thickness, alpha)
-    fig1, fig2, fig3 = figures
+    fig1, fig4, fig2, fig5, fig3, fig6 = figures
+    plt.close(fig1)
+    plt.close(fig2)
+    #plt.close(fig3)
+    plt.close(fig4)
+    plt.close(fig5)
+    #plt.close(fig6)
 
     # Show
     plt.show()
 
 if __name__ == "__main__":
-    plot_beam()
-    plot_hollow_cylinder()
-    plot_chiral_metamaterial()
+    matplotlib.use('TkAgg')
+    #plot_beam()
+    #plot_hollow_cylinder()
+    #plot_chiral_metamaterial()
     plot_chiral_metamaterial_2()

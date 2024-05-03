@@ -462,8 +462,61 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
     Ax = Lx / 2 - a / 2 + b / 2
     Az = b / 2
     ax.plot([Ax, Lx/2], [Az, Lz/2], '--', color='black')
-    ax.plot([Ax, Ax + rect_triangle_long], [Az, Az + rect_triangle_short],
-            '--', color='black')
+    #ax.plot([Ax, Ax + rect_triangle_long], [Az, Az + rect_triangle_short],
+    #        '--', color='black')
+    ax.plot([Ax, Ax + triangle_short], [Az, Az + triangle_long],
+            linewidth=lw, color='black')
+    ax.plot([Ax + thickness/2, Ax + triangle_short + thickness/2],
+            [Az - thickness/2, Az + triangle_long - thickness/2],
+            linewidth=lw, color='red')
+    ax.plot([Ax - thickness/2, Ax + triangle_short - thickness/2],
+            [Az + thickness/2, Az + triangle_long + thickness/2],
+            linewidth=lw, color='red')
+
+    # Plot other beams
+    ax.plot([Lx/2 + a/2 - b/2, Lx/2 + a/2 - b/2 - triangle_long],
+            [b/2, b/2 + triangle_short], color='black')
+    ax.plot([Lx/2 + a/2 - b/2, Lx/2 + a/2 - b/2 - triangle_short],
+            [Lz - b/2, Lz - b/2 - triangle_long], color='black')
+    ax.plot([Lx/2 - a/2 + b/2, Lx/2 - a/2 + b/2 + triangle_long],
+            [Lz - b/2, Lz - b/2 - triangle_short], color='black')
+
+    ### ----- x-z-plot (at specific y) ----- ###
+    ind_y = round((lengths[1] - lengths[0]/2 + a/2) / lengths[1] * nb_grid_pts[1])
+    ind_y -= 1
+
+    # Plot geometry
+    fig4, ax = plt.subplots()
+    fig4.suptitle(f'y = {ind_y * lengths[1] / nb_grid_pts[1]:.2}')
+    plot_2D_cut(ax, mask, lengths, index = ind_y, plane = 1)
+
+    # Plot boundaries of RVE
+    ax.plot([Lx/2 - a/2, Lx/2 + a/2],
+            [0, 0], color='orange', linewidth=lw)
+    ax.plot([Lx/2 - a/2, Lx/2 + a/2],
+            [Lz, Lz], color='orange', linewidth=lw)
+    ax.plot([Lx/2 - a/2, Lx/2 - a/2],
+            [0, Lz], color='orange', linewidth=lw)
+    ax.plot([Lx/2 + a/2, Lx/2 + a/2],
+            [0, Lz], color='orange', linewidth=lw)
+
+    # Plot projection of circles in x-z-plane
+    x0 = lengths[0] / 2
+    z0 = lengths[2] / 2
+    circle1 = plt.Circle((x0, z0), radius_out, color='red', fill=False,
+                         linewidth=lw)
+    circle2 = plt.Circle((x0, z0), radius_inn, color='red',
+                         fill=False, linewidth=lw)
+    circle3 = plt.Circle((x0, z0), radius_inn/2 + radius_out/2, color='black',
+                         fill=False, linestyle='--')
+    ax.add_patch(circle1)
+    ax.add_patch(circle2)
+    ax.add_patch(circle3)
+
+    # Plot one beam in bold
+    Ax = Lx / 2 - a / 2 + b / 2
+    Az = b / 2
+    ax.plot([Ax, Lx/2], [Az, Lz/2], '--', color='black')
     ax.plot([Ax, Ax + triangle_long], [Az, Az + triangle_short],
             linewidth=lw, color='black')
     ax.plot([Ax + thickness/2, Ax + triangle_long + thickness/2],
@@ -536,6 +589,62 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
     ax.plot([Ly/2 - a/2 + b/2, Ly/2 - a/2 + b/2 + triangle_short],
             [Lz - b/2, Lz - b/2 - triangle_long], color='black')
 
+    ### ----- y-z-plot (at specific x) ----- ###
+    # Projection on x-z-plane
+    ind_x = round((lengths[0]/2 + a/2) / lengths[0] * nb_grid_pts[0])
+    ind_x -= 1
+
+    # Plot geometry
+    fig5, ax = plt.subplots()
+    fig5.suptitle(f'x = {ind_x * lengths[0] / nb_grid_pts[0]:.2}')
+    plot_2D_cut(ax, mask, lengths, index = ind_x, plane = 0)
+
+    # Plot boundaries of RVE
+    ax.plot([Ly/2 - a/2, Ly/2 + a/2],
+            [0, 0], color='orange', linewidth=lw)
+    ax.plot([Ly/2 - a/2, Ly/2 + a/2],
+            [Lz, Lz], color='orange', linewidth=lw)
+    ax.plot([Ly/2 - a/2, Ly/2 - a/2],
+            [0, Lz], color='orange', linewidth=lw)
+    ax.plot([Ly/2 + a/2, Ly/2 + a/2],
+            [0, Lz], color='orange', linewidth=lw)
+
+    # Plot projection of circles in x-z-plane
+    y0 = lengths[1] / 2
+    z0 = lengths[2] / 2
+    circle1 = plt.Circle((y0, z0), radius_out, color='red', fill=False,
+                         linewidth=lw)
+    circle2 = plt.Circle((y0, z0), radius_inn, color='red',
+                         fill=False, linewidth=lw)
+    circle3 = plt.Circle((y0, z0), radius_inn/2 + radius_out/2, color='black',
+                         fill=False, linestyle='--')
+    ax.add_patch(circle1)
+    ax.add_patch(circle2)
+    ax.add_patch(circle3)
+
+    # Plot one beam in bold
+    Ay = Ly / 2 - a / 2 + b / 2
+    Az = b / 2
+    ax.plot([Ay, Ly/2], [Az, Lz/2], '--', color='black')
+    #ax.plot([Ay, Ay + rect_triangle_long], [Az, Az + rect_triangle_short],
+    #        '--', color='black')
+    ax.plot([Ay, Ay + triangle_short], [Az, Az + triangle_long],
+            linewidth=lw, color='black')
+    ax.plot([Ay + thickness/2, Ay + triangle_short + thickness/2],
+            [Az - thickness/2, Az + triangle_long - thickness/2],
+            linewidth=lw, color='red')
+    ax.plot([Ay - thickness/2, Ay + triangle_short - thickness/2],
+            [Az + thickness/2, Az + triangle_long + thickness/2],
+            linewidth=lw, color='red')
+
+    # Plot other beams
+    ax.plot([Ly/2 + a/2 - b/2, Ly/2 + a/2 - b/2 - triangle_long],
+            [b/2, b/2 + triangle_short], color='black')
+    ax.plot([Ly/2 + a/2 - b/2, Ly/2 + a/2 - b/2 - triangle_short],
+            [Lz - b/2, Lz - b/2 - triangle_long], color='black')
+    ax.plot([Ly/2 - a/2 + b/2, Ly/2 - a/2 + b/2 + triangle_long],
+            [Lz - b/2, Lz - b/2 - triangle_short], color='black')
+
 
     ### ----- x-y-plot (specific z) ----- ###
     # Plot geometry
@@ -573,8 +682,8 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
     Ax = Lx / 2 - a / 2 + b / 2
     Ay = Ly / 2 - a / 2 + b / 2
     ax.plot([Ax, Lx/2], [Ay, Ly/2], '--', color='black')
-    ax.plot([Ax, Ax + rect_triangle_long], [Ay, Ay + rect_triangle_short],
-            '--', color='black')
+    #ax.plot([Ax, Ax + rect_triangle_long], [Ay, Ay + rect_triangle_short],
+    #        '--', color='black')
     ax.plot([Ax, Ax + triangle_long], [Ay, Ay + triangle_short],
             linewidth=lw, color='black')
     ax.plot([Ax + thickness/2, Ax + triangle_long + thickness/2],
@@ -595,4 +704,62 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
             [Ly/2 + a/2 - b/2, Ly/2 + a/2 - b/2 - triangle_long],
             color='black')
 
-    return fig1, fig2, fig3
+    ### ----- x-y-plot (specific z) ----- ###
+    # Plot geometry
+    fig6, ax = plt.subplots()
+    fig6.suptitle(f'z = {lengths[2]}')
+    plot_2D_cut(ax, mask, lengths, index = -1, plane = 2)
+
+    # Plot boundaries of RVE
+    ax.plot([Lx/2 - a/2, Lx/2 + a/2],
+            [Ly/2 - a/2, Ly/2 - a/2],
+            color='orange', linewidth=lw)
+    ax.plot([Lx/2 + a/2, Lx/2 + a/2],
+            [Ly/2 - a/2, Ly/2 + a/2],
+            color='orange', linewidth=lw)
+    ax.plot([Lx/2 - a/2, Lx/2 + a/2],
+            [Ly/2 + a/2, Ly/2 + a/2],
+            color='orange', linewidth=lw)
+    ax.plot([Lx/2 - a/2, Lx/2 - a/2],
+            [Ly/2 - a/2, Ly/2 + a/2],
+            color='orange', linewidth=lw)
+
+    # Plot projection of circles in y-z-plane
+    x0 = lengths[0] / 2
+    y0 = lengths[1] / 2
+    circle1 = plt.Circle((x0, y0), radius_out, color='red', fill=False)
+    circle2 = plt.Circle((x0, y0), radius_inn, color='red',
+                         fill=False)
+    circle3 = plt.Circle((x0, y0), radius_inn/2 + radius_out/2, color='black',
+                         fill=False, linestyle='--')
+    ax.add_patch(circle1)
+    ax.add_patch(circle2)
+    ax.add_patch(circle3)
+
+    # Plot one beam in bold
+    Ax = Lx / 2 - a / 2 + b / 2
+    Ay = Ly / 2 - a / 2 + b / 2
+    ax.plot([Ax, Lx/2], [Ay, Ly/2], '--', color='black')
+    #ax.plot([Ax, Ax + rect_triangle_long], [Ay, Ay + rect_triangle_short],
+    #        '--', color='black')
+    ax.plot([Ax, Ax + triangle_short], [Ay, Ay + triangle_long],
+            linewidth=lw, color='black')
+    ax.plot([Ax + thickness/2, Ax + triangle_short + thickness/2],
+            [Ay - thickness/2, Ay + triangle_long - thickness/2],
+            linewidth=lw, color='red')
+    ax.plot([Ax - thickness/2, Ax + triangle_short - thickness/2],
+            [Ay + thickness/2, Ay + triangle_long + thickness/2],
+            linewidth=lw, color='red')
+
+    # Plot other beams
+    ax.plot([Lx/2 + a/2 - b/2, Lx/2 + a/2 - b/2 - triangle_long],
+            [Ly/2 - a/2 + b/2, Ly/2 - a/2 + b/2 + triangle_short],
+            color='black')
+    ax.plot([Lx/2 + a/2 - b/2, Lx/2 + a/2 - b/2 - triangle_short],
+            [Ly/2 + a/2 - b/2, Ly/2 + a/2 - b/2 - triangle_long],
+            color='black')
+    ax.plot([Lx/2 - a/2 + b/2, Lx/2 - a/2 + b/2 + triangle_long],
+            [Ly/2 + a/2 - b/2, Ly/2 + a/2 - b/2 - triangle_short],
+            color='black')
+
+    return fig1, fig4, fig2, fig5, fig3, fig6

@@ -487,7 +487,7 @@ def chiral_metamaterial_2(nb_grid_pts, lengths, radius_out, radius_inn,
     material[:, :, thickness_z//2:-thickness_z//2] = False
     mask[material] = 1
 
-    ### ----- Define the connecting beams ----- ###
+    ### ----- Definition for the connecting beams ----- ###
     # Angle between beam and coordinate system
     beta = np.pi / 4 - alpha
     step_exact = hz * np.tan(beta)
@@ -502,139 +502,333 @@ def chiral_metamaterial_2(nb_grid_pts, lengths, radius_out, radius_inn,
     assert helper > 0, message
     stop = (- helper_b - helper ** 0.5 ) / 2 / helper_a
 
-    # Beams in xz-planes
-    start_x = round((boundary + b/2) / hx)
-    stop_x = round((boundary + stop + b/2) / hx)
+    # Half the thickness projected to coordinate system
+    t_half = thickness / 2 / np.cos(beta)
+
+    ### ----- Beams in xz-planes ----- ###
+    # 1. Face (y = boundary)
     start_y = boundary_y
     stop_y = boundary_y + thickness_y
-    start_z = round(b / 2 / hz)
-    stop_z = round((b/2 + stop) / hz)
-    t_half_x = round(thickness / 2 / hx)
-    t_half_y = round(thickness / 2 / hy)
-    t_half_z = round(thickness / 2 / hz)
-    for ind_x in range(start_x, stop_x):
-        step = round((ind_x - start_x) * step_exact / hz)
-        mask[ind_x - t_half_x + 1 : ind_x + t_half_x + 1,
-             start_y : stop_y,
-             start_z + step - t_half_x : start_z + step + t_half_x] = 1
-        mask[ind_x - t_half_x + 1 : ind_x + t_half_x + 1,
-             -stop_y : -start_y,
-             start_z + step - t_half_z : start_z + step + t_half_z] = 1
-        helper = -start_z - step + t_half_z
-        if helper > -1:
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 start_y : stop_y,
-                 -start_z - step - t_half_z : ] = 1
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 -stop_y : -start_y,
-                 -start_z - step - t_half_z : ] = 1
-        else:
-            mask[-ind_x -t_half_x - 1: -ind_x + t_half_x - 1,
-                 start_y : stop_y,
-                 -start_z - step - t_half_z : helper] = 1
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 -stop_y : -start_y,
-                 -start_z - step - t_half_z : helper] = 1
+    # First and third beam
+    start_z = round((b/2) / hz)
+    stop_z = round((stop + b/2) / hz)
     for ind_z in range(start_z, stop_z):
-        step = round((ind_z - start_z) * step_exact / hx)
-        mask[-start_x - step - t_half_x : -start_x - step + t_half_x,
-             start_y : stop_y,
-             ind_z - t_half_z : ind_z + t_half_z] = 1
-        mask[start_x + step - t_half_x : start_x + step + t_half_x,
-             start_y : stop_y,
-             -ind_z - t_half_z : -ind_z + t_half_z] = 1
-        mask[-start_x - step - t_half_x : -start_x - step + t_half_x,
-             -stop_y : -start_y,
-             ind_z - t_half_z : ind_z + t_half_z] = 1
-        mask[start_x + step - t_half_x : start_x + step + t_half_x,
-             -stop_y : -start_y,
-             -ind_z - t_half_z : -ind_z + t_half_z] = 1
-
-    # Beams in yz-planes
-    start_x = boundary_x
-    stop_x = boundary_x + thickness_x
-    start_y = round((boundary + b/2) / hy)
-    stop_y = round((boundary + stop + b/2) / hy)
-    for ind_y in range(start_y, stop_y):
-        step = round((ind_y - start_y) * step_exact / hz)
-        mask[start_x : stop_x,
-             ind_y - t_half_y + 1 : ind_y + t_half_y + 1,
-             start_z + step - t_half_z : start_z + step + t_half_z] = 1
-        mask[-stop_x : -start_x,
-             ind_y - t_half_y + 1 : ind_y + t_half_y + 1,
-             start_z + step - t_half_z : start_z + step + t_half_z] = 1
-        helper = -start_z - step + t_half_z
-        if helper > -1:
-            mask[start_x : stop_x,
-                 -ind_y - t_half_y - 1: -ind_y + t_half_y - 1,
-                 -start_z - step - t_half_z : ] = 1
-            mask[-stop_x : -start_x,
-                 -ind_y - t_half_y - 1: -ind_y + t_half_y - 1,
-                 -start_z - step - t_half_z : ] = 1
-        else:
-            mask[start_x : stop_x,
-                 -ind_y - t_half_y - 1: -ind_y + t_half_y - 1,
-                 -start_z - step - t_half_z : helper] = 1
-            mask[-stop_x : -start_x,
-                 -ind_y - t_half_y - 1: -ind_y + t_half_y - 1,
-                 -start_z - step - t_half_z : helper] = 1
-    for ind_z in range(start_z, stop_z):
-        step = round((ind_z - start_z) * step_exact / hy)
-        mask[start_x : stop_x,
-             -start_y - step - t_half_y : -start_y - step + t_half_y,
-             ind_z - t_half_z : ind_z + t_half_z] = 1
-        mask[start_x : stop_x,
-             start_y + step - t_half_y : start_y + step + t_half_y,
-             -ind_z - t_half_z : -ind_z + t_half_z] = 1
-        mask[-stop_x : -start_x,
-             -start_y - step - t_half_y : -start_y - step + t_half_y,
-             ind_z - t_half_z : ind_z + t_half_z] = 1
-        mask[-stop_x : -start_x,
-             start_y + step - t_half_y : start_y + step + t_half_y,
-             -ind_z - t_half_z : -ind_z + t_half_z] = 1
-
-    # Beams in xz-planes
+        z_exact = ind_z * hz + hz / 2
+        x_exact = (z_exact - b / 2) * np.tan(beta) + boundary + b / 2
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             start_y : stop_y, ind_z] = 1
+        z_exact = lengths[2] - ind_z * hz + hz / 2
+        x_exact = (z_exact - lengths[2] + b / 2) * np.tan(beta) + lengths[0] - boundary - b / 2
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             start_y : stop_y, -ind_z] = 1
+    # Second and forth beam
     start_x = round((boundary + b/2) / hx)
     stop_x = round((boundary + stop + b/2) / hx)
+    for ind_x in range(start_x, stop_x):
+        x_exact = ind_x * hx + hx / 2
+        z_exact = - (x_exact - boundary - b / 2) * np.tan(beta) + lengths[2] - b / 2
+        mask[ind_x, start_y : stop_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+        x_exact = lengths[0] - ind_x * hx + hx / 2
+        z_exact = - (x_exact - lengths[0] + boundary + b / 2) * np.tan(beta) + b / 2
+        mask[-ind_x, start_y : stop_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+
+    # 2. Face (y = Ly - boundary)
+    start_y = nb_grid_pts[1] - boundary_y - thickness_y
+    stop_y =  nb_grid_pts[1] - boundary_y
+    # First and third beam
+    start_x = round((boundary + b/2) / hx)
+    stop_x = round((boundary + stop + b/2) / hx)
+    for ind_x in range(start_x, stop_x):
+        x_exact = ind_x * hx + hx / 2
+        z_exact = (x_exact - boundary - b / 2) * np.tan(beta) + b / 2
+        mask[ind_x, start_y : stop_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+        x_exact = lengths[0] - ind_x * hx + hx / 2
+        z_exact = (x_exact - lengths[0] + boundary + b / 2) * np.tan(beta) + lengths[2] - b / 2
+        mask[-ind_x, start_y : stop_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+    # Second and forth beam
+    start_z = round((b/2) / hz)
+    stop_z = round((stop + b/2) / hz)
+    for ind_z in range(start_z, stop_z):
+        z_exact = ind_z * hz + hz / 2
+        x_exact = - (z_exact - b / 2) * np.tan(beta) + lengths[0] - boundary - b / 2
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             start_y : stop_y, ind_z] = 1
+        z_exact = lengths[2] - ind_z * hz + hz / 2
+        x_exact = - (z_exact - lengths[2] + b / 2) * np.tan(beta) + boundary + b / 2
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             start_y : stop_y, -ind_z] = 1
+
+    ### ----- Beams in yz-planes ----- ###
+    # 1. Face (x = boundary)
+    start_x = boundary_x
+    stop_x = boundary_x + thickness_x
+    # First and third beam
     start_y = round((boundary + b/2) / hy)
     stop_y = round((boundary + stop + b/2) / hy)
-    stop_z = round(thickness / 2 / hz)
-    for ind_x in range(start_x, stop_x):
-        step = round((ind_x - start_x) * step_exact / hy)
-        mask[ind_x - t_half_x + 1 : ind_x + t_half_x + 1,
-             start_y + step - t_half_y : start_y + step + t_half_y,
-             : stop_z] = 1
-        mask[ind_x - t_half_x + 1 : ind_x + t_half_x + 1,
-             start_y + step - t_half_y : start_y + step + t_half_y,
-             -stop_z :] = 1
-        helper = -start_y - step + t_half_y
-        if helper > -1:
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 -start_y - step - t_half_y : ,
-                 : stop_z] = 1
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 -start_y - step - t_half_y : ,
-                 -stop_z :] = 1
-        else:
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 -start_y- step - t_half_y : helper,
-                 : stop_z] = 1
-            mask[-ind_x - t_half_x - 1: -ind_x + t_half_x - 1,
-                 -start_y- step - t_half_y : helper,
-                 -stop_z :] = 1
     for ind_y in range(start_y, stop_y):
-        step = round((ind_y - start_y) * step_exact / hx)
-        mask[-start_x - step - t_half_x : -start_x - step + t_half_x,
-             ind_y - t_half_y : ind_y + t_half_y,
-             : stop_z] = 1
-        mask[start_x + step - t_half_x : start_x + step + t_half_x,
-             -ind_y - t_half_y : -ind_y + t_half_y,
-             : stop_z] = 1
-        mask[-start_x - step - t_half_x : -start_x - step + t_half_x,
-             ind_y - t_half_y : ind_y + t_half_y,
-             -stop_z :] = 1
-        mask[start_x + step - t_half_x : start_x + step + t_half_x,
-             -ind_y - t_half_y : -ind_y + t_half_y,
-             -stop_z :] = 1
+        y_exact = ind_y * hy + hy / 2
+        z_exact = (y_exact - boundary - b / 2) * np.tan(beta) + b / 2
+        mask[start_x : stop_x, ind_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+        y_exact = lengths[1] - ind_y * hy + hy / 2
+        z_exact = (y_exact - lengths[1] + boundary + b / 2) * np.tan(beta) + lengths[2] - b / 2
+        mask[start_x : stop_x, -ind_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+    # Second and forth beam
+    start_z = round((b/2) / hz)
+    stop_z = round((stop + b/2) / hz)
+    for ind_z in range(start_z, stop_z):
+        z_exact = ind_z * hz + hz / 2
+        y_exact = - (z_exact - b / 2) * np.tan(beta) + lengths[1] - boundary - b / 2
+        mask[start_x : stop_x,
+             round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy), ind_z] = 1
+        z_exact = lengths[2] - ind_z * hz + hz / 2
+        y_exact = - (z_exact - lengths[2] + b / 2) * np.tan(beta) + boundary + b / 2
+        mask[start_x : stop_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             -ind_z] = 1
+
+    # 2. Face (x = Lx - boundary)
+    start_x = nb_grid_pts[0] - boundary_x - thickness_x
+    stop_x =  nb_grid_pts[0] - boundary_x
+    # First and third beam
+    start_z = round((b/2) / hz)
+    stop_z = round((stop + b/2) / hz)
+    for ind_z in range(start_z, stop_z):
+        z_exact = ind_z * hz + hz / 2
+        y_exact = (z_exact - b / 2) * np.tan(beta) + boundary + b / 2
+        mask[start_x : stop_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             ind_z] = 1
+        z_exact = lengths[2] - ind_z * hz + hz / 2
+        y_exact = (z_exact - lengths[2] + b / 2) * np.tan(beta) + lengths[1] - boundary - b / 2
+        mask[start_x : stop_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             -ind_z] = 1
+    # Second and forth beam
+    start_y = round((boundary + b/2) / hy)
+    stop_y = round((boundary + stop + b/2) / hy)
+    for ind_y in range(start_y, stop_y):
+        y_exact = ind_y * hy + hy / 2
+        z_exact = - (y_exact - boundary - b / 2) * np.tan(beta) + lengths[2] - b / 2
+        mask[start_x : stop_x, ind_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+        y_exact = lengths[1] - ind_y * hy + hy / 2
+        z_exact = - (y_exact - lengths[1] + boundary + b / 2) * np.tan(beta) + b / 2
+        mask[start_x : stop_x, -ind_y,
+             round((z_exact - t_half) / hz) : round((z_exact + t_half) / hz)] = 1
+
+
+    ### ----- Beams in yz-planes ----- ###
+    # 1. Face (z = 0)
+    stop_z = round(thickness / 2 / hz)
+    # First and third beam
+    start_x = round((boundary + b/2) / hx)
+    stop_x = round((boundary + stop + b/2) / hx)
+    for ind_x in range(start_x, stop_x):
+        x_exact = ind_x * hx + hx / 2
+        y_exact = (x_exact - boundary - b / 2) * np.tan(beta) + boundary + b / 2
+        mask[ind_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             :stop_z] = 1
+        x_exact = lengths[0] - ind_x * hx + hx / 2
+        y_exact = (x_exact - lengths[0] + boundary + b / 2) * np.tan(beta)
+        y_exact += lengths[1] - boundary - b / 2
+        mask[-ind_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             :stop_z] = 1
+    # Second and forth beam
+    start_y = round((boundary + b/2) / hy)
+    stop_y = round((boundary + stop + b/2) / hy)
+    for ind_y in range(start_y, stop_y):
+        y_exact = ind_y * hy + hy / 2
+        x_exact = -(y_exact - boundary - b / 2) * np.tan(beta) + lengths[0] - b / 2 - boundary
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             ind_y, :stop_z] = 1
+        y_exact = lengths[1] - ind_y * hy + hy / 2
+        x_exact = -(y_exact - lengths[1] + boundary + b / 2) * np.tan(beta)
+        x_exact += b / 2 + boundary
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             -ind_y, :stop_z] = 1
+
+    # 2. Face (z = Lz)
+    start_z = round((lengths[2] - thickness / 2) / hz)
+    # First and third beam
+    start_y = round((boundary + b/2) / hy)
+    stop_y = round((boundary + stop + b/2) / hy)
+    for ind_y in range(start_y, stop_y):
+        y_exact = ind_y * hy + hy / 2
+        x_exact = (y_exact - boundary - b / 2) * np.tan(beta) + b / 2 + boundary
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             ind_y, start_z:] = 1
+        y_exact = lengths[1] - ind_y * hy + hy / 2
+        x_exact = (y_exact - lengths[1] + boundary + b / 2) * np.tan(beta)
+        x_exact += lengths[0] - b / 2 - boundary
+        mask[round((x_exact - t_half) / hx) : round((x_exact + t_half) / hx),
+             -ind_y, start_z:] = 1
+    # Second and forth beam
+    start_x = round((boundary + b/2) / hx)
+    stop_x = round((boundary + stop + b/2) / hx)
+    for ind_x in range(start_x, stop_x):
+        x_exact = ind_x * hx + hx / 2
+        y_exact = - (x_exact - boundary - b / 2) * np.tan(beta) + lengths[1] - boundary - b / 2
+        mask[ind_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             start_z:] = 1
+        x_exact = lengths[0] - ind_x * hx + hx / 2
+        y_exact = - (x_exact - lengths[0] + boundary + b / 2) * np.tan(beta)
+        y_exact += boundary + b / 2
+        mask[-ind_x, round((y_exact - t_half) / hy) : round((y_exact + t_half) / hy),
+             start_z:] = 1
 
     return mask
+
+def chiral_2_mult_unit_cell_var1(nb_unit_cells, nb_grid_pts, lengths,
+                            radius_out, radius_inn, thickness, alpha=0):
+    """
+    Define a (more complex) chiral metamaterial. Each unit cell consists of
+    a beam on each face of the RVE connected to the edges by four beams.
+    The beams are inclined with an angle alpha. The metamaterial consists
+    of an infinite number of unit cells in z-direction and
+    nb_unit_cells unit cells in x- and y-direction.
+
+    Arguments
+    ---------
+    nb_unit_cells: list of 2 ints
+                   Number of unit cells in x- and y-direction.
+    nb_grid_pts: list of 3 ints
+                 Number of grid pts used to discretize ONE unit cell.
+    lengths: list of 3 floats
+             Lengths of ONE unit cell in each direction. Note that
+             lengths[0] and lengths[1] must be larger than
+             lengths[2] to break the periodicity.
+    radius_out: float
+                Outer radius of the circles.
+    radius_inn: float
+                Inner radius of the circles.
+    thickness: float
+               Thickness of the connecting beams.
+    alpha: float
+           Angle at wich the connecting beams are inclined.
+           Default is 0.
+    Returns
+    -------
+    mask: np.ndarray of floats
+          Representation of the geometry with 0 corresponding
+          to void and 1 corresponding to material.
+    lengths: list of 3 floats
+             Lengths of the complete RVE in each direction.
+    """
+    # Definition of helper paramaters
+    hx = lengths[0] / nb_grid_pts[0]
+    hy = lengths[1] / nb_grid_pts[1]
+    hz = lengths[2] / nb_grid_pts[2]
+    thickness_x = round(thickness / hx)
+    thickness_y = round(thickness / hy)
+    thickness_z = round(thickness / hz)
+    a = lengths[2]
+    boundary = (lengths[0] - a) / 2
+
+    # One unit cell
+    mask_uc = chiral_metamaterial_2(nb_grid_pts, lengths, radius_out,
+                                    radius_inn, thickness, alpha=alpha)
+
+    # Add unit cells in x-direction
+    boundary_x = round(boundary / hx)
+    mask = mask_uc[:-boundary_x]
+    helper = mask_uc[boundary_x:-boundary_x]
+    finish = mask_uc[-boundary_x:]
+    for i in range(0, nb_unit_cells[0]-1):
+        mask = np.concatenate((mask, helper), axis=0)
+    mask = np.concatenate((mask, finish), axis=0)
+
+    # Add unit cells in y-direction
+    boundary_y = round(boundary / hy)
+    helper = mask[:, boundary_y:-boundary_y]
+    finish = mask[:, -boundary_y:]
+    mask = mask[:, :-boundary_y]
+    for i in range(0, nb_unit_cells[1]-1):
+        mask = np.concatenate((mask, helper), axis=1)
+    mask = np.concatenate((mask, finish), axis=1)
+
+    # New lengths of the complete RVE
+    Lx = nb_unit_cells[0] * (lengths[0] - 2 * boundary - thickness) + 2 * boundary + thickness
+    Ly = nb_unit_cells[1] * (lengths[1] - 2 * boundary - thickness) + 2 * boundary + thickness
+
+    return mask, [Lx, Ly, lengths[2]]
+
+def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, lengths,
+                            radius_out, radius_inn, thickness, alpha=0):
+    """
+    Define a (more complex) chiral metamaterial. Each unit cell consists of
+    a beam on each face of the RVE connected to the edges by four beams.
+    The beams are inclined with an angle alpha. The metamaterial consists
+    of an infinite number of unit cells in z-direction and
+    nb_unit_cells unit cells in x- and y-direction.
+
+    Arguments
+    ---------
+    nb_unit_cells: list of 2 ints
+                   Number of unit cells in x- and y-direction.
+    nb_grid_pts: list of 3 ints
+                 Number of grid pts used to discretize ONE unit cell.
+    lengths: list of 3 floats
+             Lengths of ONE unit cell in each direction. Note that
+             lengths[0] and lengths[1] must be larger than
+             lengths[2] to break the periodicity.
+    radius_out: float
+                Outer radius of the circles.
+    radius_inn: float
+                Inner radius of the circles.
+    thickness: float
+               Thickness of the connecting beams.
+    alpha: float
+           Angle at wich the connecting beams are inclined.
+           Default is 0.
+    Returns
+    -------
+    mask: np.ndarray of floats
+          Representation of the geometry with 0 corresponding
+          to void and 1 corresponding to material.
+    lengths: list of 3 floats
+             Lengths of the complete RVE in each direction.
+    """
+    # Definition of helper paramaters
+    hx = lengths[0] / nb_grid_pts[0]
+    hy = lengths[1] / nb_grid_pts[1]
+    hz = lengths[2] / nb_grid_pts[2]
+    thickness_x = round(thickness / hx)
+    thickness_y = round(thickness / hy)
+    thickness_z = round(thickness / hz)
+    a = lengths[2]
+    b = 1.5 * thickness
+    b_x = round(b / hx)
+    b_y = round(b / hy)
+    b_z = round(b / hz)
+    boundary = (lengths[0] - a) / 2
+
+    # One unit cell
+    mask_uc = chiral_metamaterial_2(nb_grid_pts, lengths, radius_out,
+                                    radius_inn, thickness, alpha=alpha)
+
+    # Add unit cells in x-direction
+    boundary_x = round(boundary / hx)
+    mask = mask_uc[:-boundary_x-thickness_x]
+    helper = mask_uc[boundary_x:-boundary_x-thickness_x]
+    finish = mask_uc[-boundary_x-thickness_x:]
+    for i in range(0, nb_unit_cells[0]-1):
+        mask = np.concatenate((mask, helper), axis=0)
+    mask = np.concatenate((mask, finish), axis=0)
+
+    # Add unit cells in y-direction
+    boundary_y = round(boundary / hy)
+    helper = mask[:, boundary_y:-boundary_y-thickness_y]
+    finish = mask[:, -boundary_y-thickness_y:]
+    mask = mask[:, :-boundary_y-thickness_y]
+    for i in range(0, nb_unit_cells[1]-1):
+        mask = np.concatenate((mask, helper), axis=1)
+    mask = np.concatenate((mask, finish), axis=1)
+
+    # New lengths of the complete RVE
+    Lx = nb_unit_cells[0] * (lengths[0] - 2 * boundary - thickness) + 2 * boundary + thickness
+    Ly = nb_unit_cells[1] * (lengths[1] - 2 * boundary - thickness) + 2 * boundary + thickness
+
+    return mask, [Lx, Ly, lengths[2]]

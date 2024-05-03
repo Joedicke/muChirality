@@ -34,10 +34,11 @@ Program grant you additional permission to convey the resulting work.
 import sys
 import os
 
-# Default path of the library
-sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/libmufft/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/libmugrid/python"))
+# Path of the muSpectre library
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/build/language_bindings/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/build/language_bindings/libmufft/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/build/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), ".."))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -45,11 +46,12 @@ import matplotlib.pyplot as plt
 import muSpectre as µ
 
 import muChirality.Geometries as geo
+import muChirality.Plotting as plot
 
 def save_different_geometries():
     ### ----- Parameter definitions ----- ###
     # Unit cell
-    nb_grid_pts_1 = [20, 20, 20]
+    nb_grid_pts_1 = [50, 50, 50]
     nb_grid_pts_2 = [21, 21, 21]
     case = 'even'
     # case = 'odd'
@@ -79,7 +81,7 @@ def save_different_geometries():
     # Names of geometries
     names_geo = ['Minimal', 'Minimal_much_void', 'cylinder',
                  'hollow_cylinder', 'beam', 'not-chiral', 'chiral',
-                 'chiral 2']
+                 'chiral 2', 'chiral 2 (old)']
 
     ### ---- Save different geometries ----- ###
     if case == 'even':
@@ -109,6 +111,9 @@ def save_different_geometries():
     if len(names_geo) > 7:
         masks[7] = geo.chiral_metamaterial_2(nb_grid_pts, lengths, radius_out,
                                              radius_inn, thickness, alpha=alpha)
+    if len(names_geo) > 8:
+        masks[8] = geo.chiral_metamaterial_2_old(nb_grid_pts, lengths, radius_out,
+                                                 radius_inn, thickness, alpha=alpha)
 
     ### ----- Helper cell ----- ###
     # Define muSpectre cell to use functions for saving data
@@ -147,5 +152,117 @@ def save_different_geometries():
     µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=None,
                                       F0=F0, displacement_field=True)
 
+
+def save_chiral_2():
+    ### ----- Parameter definitions ----- ###
+    # Unit cell
+    nb_grid_pts = [40, 40, 40] # Only for one unit cell!
+    lengths = [1, 1, 1]
+
+    # muSpectre parameters
+    formulation = µ.Formulation.small_strain
+    gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
+    F0 = np.eye(3)
+
+    # Geometry
+    a = 0.5
+    thickness = 0.06 * a
+    lengths = [a + thickness, a + thickness, a]
+    radius_out = 0.4 * a
+    radius_inn = 0.34 * a
+    angle_mat = np.pi * 35 / 180
+    N_unit_cell_list = [1, 2, 3]
+
+    boundary = (lengths[0] - a) / 2
+    b = 1.5 * thickness
+
+    # Show?
+    show = True
+
+    ### ----- Helper plots ----- ###
+    mask = geo.chiral_metamaterial_2(nb_grid_pts, lengths,
+                                     radius_out, radius_inn,
+                                     thickness, alpha=angle_mat)
+    fig2, ax = plt.subplots(1, 2)
+    fig2.suptitle(f'z = 0')
+    plot.plot_2D_cut(ax[0], mask, lengths, index = 0, plane = 2)
+    plot.plot_2D_cut(ax[1], mask, lengths, index = 0, plane = 2)
+    helper = boundary
+    ax[0].plot([helper, helper], [0, lengths[1]], color='red')
+    helper = lengths[0] - boundary
+    ax[0].plot([helper, helper], [0, lengths[1]], color='red')
+    helper = boundary
+    ax[1].plot([helper, helper], [0, lengths[1]], color='red')
+    helper = lengths[0] - boundary - thickness
+    ax[1].plot([helper, helper], [0, lengths[1]], color='red')
+    helper = lengths[0] - boundary - b
+    ax[1].plot([helper, helper], [0, lengths[1]], '--', color='red')
+    #if show:
+    #   plt.show()
+
+    ### ----- Define geometry ----- ###
+    mask_list = []
+    for N_uc in N_unit_cell_list:
+        # Define geometry
+        nb_unit_cells = [N_uc, N_uc]
+        mask, [Lx, Ly, Lz] =\
+            geo.chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, lengths,
+                                        radius_out, radius_inn,
+                                        thickness, alpha=angle_mat)
+        mask_list.append(mask)
+        shape = mask.shape
+        hx = Lx / shape[0]
+        hy = Ly / shape[1]
+        hz = Lz / shape[2]
+        print(f'nb_unit_cells = {N_uc} x {N_uc}')
+        print(f'nb_grid_pts = {shape[0]}x{shape[1]}x{shape[2]}')
+        print(f'hx = {hx}')
+        print(f'hy = {hy}')
+        print(f'hz = {hz}')
+
+        ### ----- Plotting ----- ###
+        fig, ax = plt.subplots()
+        fig.suptitle(f'z = 0')
+        plot.plot_2D_cut(ax, mask, lengths, index = 0, plane = 2)
+        if show:
+            plt.show()
+        plt.close(fig)
+
+    ### ----- Save for paraview ----- ###
+    nb_grid_pts = mask_list[-1].shape
+    lengths = [Lx, Ly, Lz]
+
+    # Define muSpectre cell to use functions for saving data
+    cell = µ.Cell(nb_grid_pts, lengths, formulation, gradient, weights)
+    mat = µ.material.MaterialLinearElastic1_3d.make(cell, "hard", 10, 0)
+    vac = µ.material.MaterialLinearElastic1_3d.make(cell, "vacuum", 0, 0)
+    mask = mask.flatten(order='F')
+    for pixel_id, pixel in cell.pixels.enumerate():
+        if mask[pixel_id] == 1:
+            mat.add_pixel(pixel_id)
+        else:
+            vac.add_pixel(pixel_id)
+    cell.initialise()
+    mask.reshape(nb_grid_pts, order='F')
+
+    # What to save
+    cell_data = {}
+    for i, mask in enumerate(mask_list): #[:-1]):
+        N_uc = N_unit_cell_list[i]
+        helper = np.zeros(nb_grid_pts)
+        shape = mask.shape
+        helper[0:shape[0], 0:shape[1], 0:shape[2]] = mask
+        material = np.stack((helper, helper, helper, helper, helper), axis=0)
+        material = material.flatten(order='F')
+        material = material.reshape((1, -1))
+        name = f'nb_unit_cells={N_uc}x{N_uc}'
+        cell_data[name] = material
+
+    # Saving
+    name = 'plots/different_chiral_metamaterials_2.xdmf'
+    µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=None,
+                                      F0=F0, displacement_field=True)
+
 if __name__ == "__main__":
-    save_different_geometries()
+    #save_different_geometries()
+    save_chiral_2()

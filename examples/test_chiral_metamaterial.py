@@ -46,13 +46,13 @@ from time import time
 
 import muSpectre as µ
 
-from EigenStrainTorsion import EigenStrain
-from Geometries import cylinder
-from Geometries import chiral_metamaterial
-from Geometries import chiral_metamaterial_2
-from CalculationsTorsion import calculations
-from test_geometries import plot_2D_metamaterial
-from test_geometries import plot_2D_metamaterial_2
+from muChirality.EigenStrainTorsion import EigenStrain
+from muChirality.Geometries import cylinder
+from muChirality.Geometries import chiral_metamaterial
+#from Geometries import chiral_metamaterial_2
+from muChirality.CalculationsTorsion import calculations
+#from muChirality.test_geometries import plot_2D_metamaterial
+#from test_geometries import plot_2D_metamaterial_2
 
 
 def comparison_cylinder(nb_grid_pts):
@@ -73,8 +73,8 @@ def comparison_cylinder(nb_grid_pts):
     Poisson = 0
 
     # Loading
-    #angles_rot = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2]
-    angles_rot = [-0.1, 0.1, 0.2]
+    angles_rot = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2]
+    #angles_rot = [-0.1, 0.1, 0.2]
     x_rot_axis = lengths[0] / 2
     y_rot_axis = lengths[1] / 2
     delta_F = np.zeros((3, 3))
@@ -90,7 +90,7 @@ def comparison_cylinder(nb_grid_pts):
     verbose          = µ.Verbosity.Silent
 
     # For saving
-    folder = 'plots_chiral_material/'
+    folder = 'examples/plots/chiral_mat_1/'
     F0 = np.eye(3)
 
     ### ----- Calculations ----- ###
@@ -183,6 +183,7 @@ def comparison_cylinder(nb_grid_pts):
         pos, displ, force = calculations(strain, stress, cell,
                                          eigen_class, detailed=False)
         forces_chiral[i_angle] = force
+        print('First calculation done.')
 
         # Save one state for paraview
         if i_angle is (len(angles_rot)-1):
@@ -200,14 +201,14 @@ def comparison_cylinder(nb_grid_pts):
             name += f'x{nb_grid_pts[1]}x{nb_grid_pts[2]}.xdmf'
             µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
                                               F0=F0, displacement_field=True)
-            name = folder + f'angle={angle_mat}/nb_grid_pts={nb_grid_pts[0]}'
-            name += f'x{nb_grid_pts[1]}x{nb_grid_pts[2]}.xmf'
-            µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
-                                              F0=F0, displacement_field=False)
-            name = folder + f'angle={angle_mat}/nb_grid_pts={nb_grid_pts[0]}'
-            name += f'x{nb_grid_pts[1]}x{nb_grid_pts[2]}.vtu'
-            µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
-                                              F0=F0, displacement_field=False)
+            #name = folder + f'angle={angle_mat}/nb_grid_pts={nb_grid_pts[0]}'
+            #name += f'x{nb_grid_pts[1]}x{nb_grid_pts[2]}.xmf'
+            #µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
+            #                                  F0=F0, displacement_field=False)
+            #name = folder + f'angle={angle_mat}/nb_grid_pts={nb_grid_pts[0]}'
+            #name += f'x{nb_grid_pts[1]}x{nb_grid_pts[2]}.vtu'
+            #µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
+            #                                  F0=F0, displacement_field=False)
 
         # Delete Parameters
         del cell
@@ -219,6 +220,8 @@ def comparison_cylinder(nb_grid_pts):
         del res
         del stress
         del strain
+
+        print('First writing done.')
 
         ### ----- Calculation (chiral 2) ----- ###
         # Define geometry
@@ -255,6 +258,7 @@ def comparison_cylinder(nb_grid_pts):
         pos2, displ2, force2 = calculations(strain2, stress2, cell2,
                                             eigen_class2, detailed=False)
         forces_chiral2[i_angle] = force2
+        print('Second calculation done.')
 
         # Save one state for paraview
         if i_angle is (len(angles_rot)-1):
@@ -283,6 +287,8 @@ def comparison_cylinder(nb_grid_pts):
         del res
         del stress2
         del strain2
+
+        print('Second writing done.')
 
 
     ### ----- Plot forces ----- ###
@@ -381,7 +387,7 @@ if __name__ == "__main__":
     #nb_grid_pts = [70, 70, 70]
     #nb_grid_pts = [30, 30, 30]
     #geometry_plots(nb_grid_pts, saving=True, showing=False)
-    #comparison_cylinder(nb_grid_pts)
+    comparison_cylinder(nb_grid_pts)
     #geometry_plots2(nb_grid_pts, saving=True, showing=False)
     #comparison_cylinder2(nb_grid_pts)
-    comparison_paper2_relaxation(nb_grid_pts)
+    #comparison_paper2_relaxation(nb_grid_pts)

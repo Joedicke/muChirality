@@ -28,5 +28,10 @@ The entry point for the code
 
 __version__ = '0.0.1'
 
+#import Geometries
+#import EigenStrainTorsion
+#import CalculationsTorsion
+#import Plotting
+
 def hello_world():
 	return "Hello world!"
