@@ -109,15 +109,9 @@ E_eff_z_list = np.empty(len(N_uc_list))
 twist_per_strain_list = np.empty(len(N_uc_list))
 for index, N_uc in enumerate(N_uc_list):
     ### ----- Define geometry ----- ###
-    #if N_uc == 1:
-    #    mask = chiral_metamaterial_2(nb_grid_pts_uc,
-    #                            lengths_uc, radius_out, radius_inn,
-    #                            thickness, alpha=angle_mat)
-    #    lengths = lengths_uc
-    #else:
     mask, lengths_uc =\
             chiral_2_mult_unit_cell([N_uc, N_uc], nb_grid_pts_uc,
-                                    lengths_uc, radius_out, radius_inn,
+                                    lengths, radius_out, radius_inn,
                                     thickness, alpha=angle_mat)
     nb_grid_pts = mask.shape
 
