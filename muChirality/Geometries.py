@@ -681,7 +681,7 @@ def chiral_metamaterial_2(nb_grid_pts, lengths, radius_out, radius_inn,
 
     return mask
 
-def chiral_2_mult_unit_cell_var1(nb_unit_cells, nb_grid_pts, lengths,
+def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, lengths,
                             radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
@@ -755,7 +755,7 @@ def chiral_2_mult_unit_cell_var1(nb_unit_cells, nb_grid_pts, lengths,
 
     return mask, [Lx, Ly, lengths[2]]
 
-def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, lengths,
+def chiral_2_mult_unit_cell_var2(nb_unit_cells, nb_grid_pts, lengths,
                             radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
