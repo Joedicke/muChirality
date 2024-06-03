@@ -363,7 +363,7 @@ def plot_2D_chiral(nb_grid_pts, lengths, radius, thickness, alpha):
 
     return fig1, fig2, fig3
 
-def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
+def plot_2D_chiral_2(nb_grid_pts, a, radius_out, radius_inn,
                      thickness, alpha):
     """
     Create 2D plots of the second chiral metamaterial. Helper lines show
@@ -373,10 +373,8 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
     ---------
     nb_grid_pts: list of 3 ints
                  Number of grid pts in each direction.
-    lengths: list of 3 floats
-             Lengths of unit cell in each direction. Note that the size of
-             the RVE corresponds to lengths[2], so that lengths[0] and
-             lengths[1] must be larger than lengths[2] to break the periodicity.
+    a: float
+       Length of the RVE in all directions.
     radius_out: float
                 Outer radius of the circles.
     radius_inn: float
@@ -397,20 +395,24 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
     """
 
     ### ----- Parameter definitions ----- ###
+    # Material
+    mask, lengths = geo.chiral_metamaterial_2(nb_grid_pts, a, radius_out,
+                                              radius_inn, thickness,
+                                              alpha=alpha)
+
     Lx = lengths[0]
     Ly = lengths[1]
     Lz = lengths[2]
 
     # Coordinates of grid pts
-    x = np.linspace(0, lengths[0], nb_grid_pts[0]+1)
-    y = np.linspace(0, lengths[1], nb_grid_pts[1]+1)
-    z = np.linspace(0, lengths[2], nb_grid_pts[2]+1)
+    x = np.linspace(0, Lx, nb_grid_pts[0]+1)
+    y = np.linspace(0, Ly, nb_grid_pts[1]+1)
+    z = np.linspace(0, Lz, nb_grid_pts[2]+1)
 
     # Plot thick lines
     lw = 3
 
     # Analytical construction of metamaterial
-    a = Lz
     b = 1.5 * thickness
     beta = np.pi / 4 - alpha
     helper = 2 ** 0.5 * (a/2 - b/2) * np.cos(alpha)
@@ -422,10 +424,6 @@ def plot_2D_chiral_2(nb_grid_pts, lengths, radius_out, radius_inn,
     helper = helper_b ** 2 - 4 * helper_a * helper_c
     triangle_long = (- helper_b - helper ** 0.5 ) / 2 / helper_a
     triangle_short = np.tan(beta) * triangle_long
-
-    # Material
-    mask = geo.chiral_metamaterial_2(nb_grid_pts, lengths, radius_out,
-                                     radius_inn, thickness, alpha=alpha)
 
     ### ----- x-z-plot (at specific y) ----- ###
     ind_y = round((lengths[1]/2 - a/2) / lengths[1] * nb_grid_pts[1])

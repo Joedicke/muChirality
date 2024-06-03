@@ -157,46 +157,43 @@ def save_chiral_2():
     ### ----- Parameter definitions ----- ###
     # Unit cell
     nb_grid_pts = [40, 40, 40] # Only for one unit cell!
-    lengths = [1, 1, 1]
+
+    # Geometry
+    a = 0.5
+    thickness = 0.06 * a
+    radius_out = 0.4 * a
+    radius_inn = 0.34 * a
+    angle_mat = np.pi * 35 / 180
+    N_unit_cell_list = [1, 2, 3]
+
+    b = 1.5 * thickness
 
     # muSpectre parameters
     formulation = µ.Formulation.small_strain
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
     F0 = np.eye(3)
 
-    # Geometry
-    a = 0.5
-    thickness = 0.06 * a
-    lengths = [a + thickness, a + thickness, a]
-    radius_out = 0.4 * a
-    radius_inn = 0.34 * a
-    angle_mat = np.pi * 35 / 180
-    N_unit_cell_list = [1, 2, 3]
-
-    boundary = (lengths[0] - a) / 2
-    b = 1.5 * thickness
-
     # Show?
     show = True
 
     ### ----- Helper plots ----- ###
-    mask = geo.chiral_metamaterial_2(nb_grid_pts, lengths,
-                                     radius_out, radius_inn,
-                                     thickness, alpha=angle_mat)
+    mask, lengths = geo.chiral_metamaterial_2(nb_grid_pts, a,
+                                              radius_out, radius_inn,
+                                              thickness, alpha=angle_mat)
     fig2, ax = plt.subplots(1, 2)
     fig2.suptitle(f'z = 0')
     plot.plot_2D_cut(ax[0], mask, lengths, index = 0, plane = 2)
     plot.plot_2D_cut(ax[1], mask, lengths, index = 0, plane = 2)
-    helper = boundary
-    ax[0].plot([helper, helper], [0, lengths[1]], color='red')
-    helper = lengths[0] - boundary
-    ax[0].plot([helper, helper], [0, lengths[1]], color='red')
-    helper = boundary
-    ax[1].plot([helper, helper], [0, lengths[1]], color='red')
-    helper = lengths[0] - boundary - thickness
-    ax[1].plot([helper, helper], [0, lengths[1]], color='red')
-    helper = lengths[0] - boundary - b
-    ax[1].plot([helper, helper], [0, lengths[1]], '--', color='red')
+    #helper = boundary
+    #ax[0].plot([helper, helper], [0, lengths[1]], color='red')
+    #helper = lengths[0] - boundary
+    #ax[0].plot([helper, helper], [0, lengths[1]], color='red')
+    #helper = boundary
+    #ax[1].plot([helper, helper], [0, lengths[1]], color='red')
+    #helper = lengths[0] - boundary - thickness
+    #ax[1].plot([helper, helper], [0, lengths[1]], color='red')
+    #helper = lengths[0] - boundary - b
+    #ax[1].plot([helper, helper], [0, lengths[1]], '--', color='red')
     #if show:
     #   plt.show()
 
@@ -205,17 +202,18 @@ def save_chiral_2():
     for N_uc in N_unit_cell_list:
         # Define geometry
         nb_unit_cells = [N_uc, N_uc]
-        mask, [Lx, Ly, Lz] =\
-            geo.chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, lengths,
+        mask, lengths =\
+            geo.chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
                                         radius_out, radius_inn,
                                         thickness, alpha=angle_mat)
         mask_list.append(mask)
         shape = mask.shape
-        hx = Lx / shape[0]
-        hy = Ly / shape[1]
-        hz = Lz / shape[2]
+        hx = lengths[0] / shape[0]
+        hy = lengths[1] / shape[1]
+        hz = lengths[2] / shape[2]
         print(f'nb_unit_cells = {N_uc} x {N_uc}')
         print(f'nb_grid_pts = {shape[0]}x{shape[1]}x{shape[2]}')
+        print(f'lengths = {lengths[0]}x{lengths[1]}x{lengths[2]}')
         print(f'hx = {hx}')
         print(f'hy = {hy}')
         print(f'hz = {hz}')
@@ -230,7 +228,6 @@ def save_chiral_2():
 
     ### ----- Save for paraview ----- ###
     nb_grid_pts = mask_list[-1].shape
-    lengths = [Lx, Ly, Lz]
 
     # Define muSpectre cell to use functions for saving data
     cell = µ.Cell(nb_grid_pts, lengths, formulation, gradient, weights)

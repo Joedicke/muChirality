@@ -144,21 +144,21 @@ def plot_chiral_metamaterial_2():
     # Geometry
     a = 1
     thickness = 0.06
-    lengths = [a + thickness, a + thickness, a]
+    # lengths = [a + thickness, a + thickness, a]
     radius_out = 0.4
     radius_inn = radius_out - thickness
     alpha = np.pi * 35 / 180
 
     ### ----- Show + save figures ----- ###
-    figures = plot.plot_2D_chiral_2(nb_grid_pts, lengths, radius_out,
+    figures = plot.plot_2D_chiral_2(nb_grid_pts, a, radius_out,
                                     radius_inn, thickness, alpha)
     fig1, fig4, fig2, fig5, fig3, fig6 = figures
-    plt.close(fig1)
+    #plt.close(fig1)
     plt.close(fig2)
-    #plt.close(fig3)
-    plt.close(fig4)
+    plt.close(fig3)
+    #plt.close(fig4)
     plt.close(fig5)
-    #plt.close(fig6)
+    plt.close(fig6)
 
     # Show
     plt.show()

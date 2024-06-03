@@ -56,13 +56,13 @@ t = time()
 # Geometry
 a = 0.5
 thickness = 0.06 * a
-lengths = [a + thickness, a + thickness, a]
 radius_out = 0.4 * a
 radius_inn = 0.34 * a
 angle_mat = np.pi * 35 / 180
 
 # Nb of unit cells in RVE
 N_uc_list = [1, 2]
+restart = False
 
 # Discretization
 dim = 3
@@ -76,6 +76,7 @@ if MPI.COMM_WORLD.rank == 0:
     helper += f'x{nb_grid_pts_uc[2]}'
     print(helper)
     print('List nb_unit_cells =', N_uc_list)
+    print('Restarted:', restart)
     print()
 
 # Material
@@ -103,15 +104,22 @@ fft = 'mpi' # Parallel fft
 
 # For saving
 F0 = np.eye(3)
+name = f'chiral_mat_2_Nxyz={nb_grid_pts_uc[0]}_data.txt'
+
+if (MPI.COMM_WORLD.rank == 0) and (not restart):
+    with open(name, 'w') as f:
+        title = 'Number of unit cells in RVE    Effective Youngs modulus in'
+        title += ' z direction    Twist per strain (degree/%)'
+        print(title, file=f)
 
 # What is calculated
 E_eff_z_list = np.empty(len(N_uc_list))
 twist_per_strain_list = np.empty(len(N_uc_list))
 for index, N_uc in enumerate(N_uc_list):
     ### ----- Define geometry ----- ###
-    mask, lengths_uc =\
+    mask, lengths =\
             chiral_2_mult_unit_cell([N_uc, N_uc], nb_grid_pts_uc,
-                                    lengths, radius_out, radius_inn,
+                                    a, radius_out, radius_inn,
                                     thickness, alpha=angle_mat)
     nb_grid_pts = mask.shape
 
@@ -147,9 +155,10 @@ for index, N_uc in enumerate(N_uc_list):
 
     # Stiffness in z-direction
     stiff_z = force_z / delta_eps2[2, 2]
-    E_eff_z = stiff_z / lengths[0] / lengths[1]
+    E_eff_z = stiff_z / a / a
     E_eff_z_list[index] = E_eff_z
     if MPI.COMM_WORLD.rank == 0:
+        print(f'nb_unit_cells = {N_uc}')
         print(f'E_eff_z = {E_eff_z}')
 
     ### ----- Calculate Twist per Strain ----- ###
@@ -166,10 +175,10 @@ for index, N_uc in enumerate(N_uc_list):
     stress = res.stress.reshape(shape, order='F')
     strain = res.grad.reshape(shape, order='F')
 
-    # Calculate force
-    pos, displ, force = calculations(strain, stress, cell,
-                                     eigen_class, detailed=False)
-    force = Reduction(MPI.COMM_WORLD).sum(force)
+    # Force in z-direction
+    force = hx * hy * hz / 6 * np.sum(stress[2, 2])
+    force += hx * hy * hz / 6 * np.sum(stress[2, 2, 0])
+    force = Reduction(MPI.COMM_WORLD).sum(force) / lengths[2]
 
     # Comparison with paper
     twist_in_degree = np.arctan(angle_rot * lengths[2]) / np.pi * 180
@@ -182,15 +191,43 @@ for index, N_uc in enumerate(N_uc_list):
         print('Twist/strain (degree/%):', twist_per_strain)
         print(f'Finished calculation {index+1} of {len(N_uc_list)}')
 
-### ----- Save results ----- ###
-name = f'chiral_mat_2_Nxyz={nb_grid_pts_uc[0]}_data.txt'
-if MPI.COMM_WORLD.rank == 0:
-    with open(name, 'w') as f:
-        print('Number of unit cells in RVE', file=f)
-        np.savetxt(f, N_uc_list, newline=' ')
-        print('', file=f)
-        print('Effective Youngs modulus in z-direction', file=f)
-        np.savetxt(f, E_eff_z_list, newline=' ')
-        print('', file=f)
-        print('Twist per strain (degree/%)')
-        np.savetxt(f, twist_per_strain_list, newline=' ')
+    ### ----- Save results ----- ###
+    if MPI.COMM_WORLD.rank == 0:
+        with open(name, 'a') as f:
+            np.savetxt(f, [N_uc, E_eff_z, twist_per_strain], newline=' ')
+            print('', file=f)
+
+    # Save deformed state only if the calculation is not parallel
+    if MPI.COMM_WORLD.size == 1:
+        # Calculate position + displacement
+        x = np.linspace(0, lengths[0], nb_grid_pts[0]+1, endpoint=True)
+        y = np.linspace(0, lengths[1], nb_grid_pts[1]+1, endpoint=True)
+        z = np.linspace(0, lengths[2], nb_grid_pts[2]+1, endpoint=True)
+        strain_no_eigen = strain.copy()
+        eigen_class.remove_eigen_strain_func(strain_no_eigen)
+        [x_0, y_0, z_0], [x_displ, y_displ, z_displ] \
+            = get_complemented_positions("0d", cell, strain_array=strain_no_eigen, F0=F0,
+                                         periodically_complemented=True)
+        x_rot_axis = lengths[0] / 2
+        y_rot_axis = lengths[1] / 2
+        helper = - angle_rot * np.einsum('i,j->ij', y-y_rot_axis, z)
+        x_displ += helper[None, :, :]
+        helper = angle_rot * np.einsum('i,j->ij', x-x_rot_axis, z)
+        y_displ += helper[:, None, :]
+        pos = np.asarray([x_0, y_0, z_0])
+        displ = np.asarray([x_displ, y_displ, z_displ])
+
+        # Save as xdmf-file
+        cell_data = {}
+        material = np.stack((mask, mask, mask, mask, mask), axis=0)
+        material = material.flatten(order='F')
+        material = material.reshape((1, -1))
+        stress = stress.reshape((3, 3, -1), order='F').T.swapaxes(1, 2)
+        stress = stress.reshape((1, -1, 3, 3)).copy()
+        strain = strain.reshape((3, 3, -1), order='F').T.swapaxes(1, 2)
+        strain = strain.reshape((1, -1, 3, 3)).copy()
+        cell_data = {"material": material, "stress_field": stress, "strain_field": strain}
+        point_data = {"displ": displ.reshape((3, -1), order='F').T}
+        name = f'chiral_mat2_Nuc={N_uc}_Nxyz={nb_grid_pts_uc[0]}_deformed.xdmf'
+        µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
+                                          F0=F0, displacement_field=False)
