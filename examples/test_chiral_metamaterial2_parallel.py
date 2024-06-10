@@ -34,6 +34,7 @@ Program grant you additional permission to convey the resulting work.
 
 import sys
 import os
+#sys.path.insert(0, os.path.join(os.getcwd(), "/usr/local/lib/python3.8/site-packages"))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,11 +45,11 @@ from NuMPI import MPI
 from NuMPI.Tools import Reduction
 
 from muChirality.EigenStrainTorsion import EigenStrain
-from muChirality.Geometries import cylinder
-from muChirality.Geometries import chiral_metamaterial_2
-from muChirality.Geometries import chiral_2_mult_unit_cell
+#from muChirality.Geometries import chiral_metamaterial_2
+#from muChirality.Geometries import chiral_2_mult_unit_cell
 from muChirality.CalculationsTorsion import calculations
 from muSpectre.gradient_integration import get_complemented_positions
+import muChirality.Geometries as geo
 
 ### ----- Parameter definitions ----- ###
 t = time()
@@ -63,10 +64,13 @@ angle_mat = np.pi * 35 / 180
 # Nb of unit cells in RVE
 N_uc_list = [1, 2]
 restart = False
+plates = True
+Nz_one = False
 
 # Discretization
 dim = 3
-nb_grid_pts_uc = [30, 30, 30]
+N = 30
+nb_grid_pts_uc = [N, N, N]
 gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
 if MPI.COMM_WORLD.rank == 0:
@@ -77,6 +81,9 @@ if MPI.COMM_WORLD.rank == 0:
     print(helper)
     print('List nb_unit_cells =', N_uc_list)
     print('Restarted:', restart)
+    print('With plates:', plates)
+    if plates:
+        print('Is N_uc_z = 1? ', Nz_one)
     print()
 
 # Material
@@ -104,7 +111,13 @@ fft = 'mpi' # Parallel fft
 
 # For saving
 F0 = np.eye(3)
-name = f'chiral_mat_2_Nxyz={nb_grid_pts_uc[0]}_data.txt'
+if plates:
+    if Nz_one:
+        name = f'chiral_mat_2_plates1_Nxyz={nb_grid_pts_uc[0]}_data.txt'
+    else:
+        name = f'chiral_mat_2_plates2_Nxyz={nb_grid_pts_uc[0]}_data.txt'
+else:
+    name = f'chiral_mat_2_Nxyz={nb_grid_pts_uc[0]}_data.txt'
 
 if (MPI.COMM_WORLD.rank == 0) and (not restart):
     with open(name, 'w') as f:
@@ -117,10 +130,24 @@ E_eff_z_list = np.empty(len(N_uc_list))
 twist_per_strain_list = np.empty(len(N_uc_list))
 for index, N_uc in enumerate(N_uc_list):
     ### ----- Define geometry ----- ###
-    mask, lengths =\
-            chiral_2_mult_unit_cell([N_uc, N_uc], nb_grid_pts_uc,
-                                    a, radius_out, radius_inn,
-                                    thickness, alpha=angle_mat)
+    if plates:
+        if Nz_one:
+            mask, lengths =\
+                geo.chiral_2_with_plate([N_uc, N_uc], nb_grid_pts_uc, a,
+                                        radius_out, radius_inn,
+                                        thickness, alpha=angle_mat,
+                                        nb_unit_cells_z=1)
+        else:
+            mask, lengths =\
+                geo.chiral_2_with_plate([N_uc, N_uc], nb_grid_pts_uc, a,
+                                        radius_out, radius_inn,
+                                        thickness, alpha=angle_mat,
+                                        nb_unit_cells_z=N_uc)
+    else:
+        mask, lengths =\
+            geo.chiral_2_mult_unit_cell([N_uc, N_uc], nb_grid_pts_uc,
+                                        a, radius_out, radius_inn,
+                                        thickness, alpha=angle_mat)
     nb_grid_pts = mask.shape
 
     ### ----- muSpectre cell initialization ----- ###
@@ -228,6 +255,12 @@ for index, N_uc in enumerate(N_uc_list):
         strain = strain.reshape((1, -1, 3, 3)).copy()
         cell_data = {"material": material, "stress_field": stress, "strain_field": strain}
         point_data = {"displ": displ.reshape((3, -1), order='F').T}
-        name = f'chiral_mat2_Nuc={N_uc}_Nxyz={nb_grid_pts_uc[0]}_deformed.xdmf'
+        if plates:
+            if Nz_one:
+                name = f'chiral_mat2_plates1_Nuc={N_uc}_Nxyz={nb_grid_pts_uc[0]}_deformed.xdmf'
+            else:
+                name = f'chiral_mat2_plates2_Nuc={N_uc}_Nxyz={nb_grid_pts_uc[0]}_deformed.xdmf'
+        else:
+            name = f'chiral_mat2_Nuc={N_uc}_Nxyz={nb_grid_pts_uc[0]}_deformed.xdmf'
         µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
                                           F0=F0, displacement_field=False)

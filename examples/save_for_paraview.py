@@ -156,7 +156,8 @@ def save_different_geometries():
 def save_chiral_2():
     ### ----- Parameter definitions ----- ###
     # Unit cell
-    nb_grid_pts = [40, 40, 40] # Only for one unit cell!
+    N = 30
+    nb_grid_pts = [N, N, N] # Only for one unit cell!
 
     # Geometry
     a = 0.5
@@ -167,6 +168,9 @@ def save_chiral_2():
     N_unit_cell_list = [1, 2, 3]
 
     b = 1.5 * thickness
+
+    plates = True
+    Nz_one = True
 
     # muSpectre parameters
     formulation = µ.Formulation.small_strain
@@ -202,10 +206,24 @@ def save_chiral_2():
     for N_uc in N_unit_cell_list:
         # Define geometry
         nb_unit_cells = [N_uc, N_uc]
-        mask, lengths =\
-            geo.chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
+        if plates:
+            if Nz_one:
+                mask, lengths =\
+                    geo.chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
                                         radius_out, radius_inn,
-                                        thickness, alpha=angle_mat)
+                                        thickness, alpha=angle_mat,
+                                        nb_unit_cells_z=1)
+            else:
+                mask, lengths =\
+                    geo.chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
+                                        radius_out, radius_inn,
+                                        thickness, alpha=angle_mat,
+                                        nb_unit_cells_z=N_uc)
+        else:
+            mask, lengths =\
+                geo.chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
         mask_list.append(mask)
         shape = mask.shape
         hx = lengths[0] / shape[0]
@@ -256,7 +274,13 @@ def save_chiral_2():
         cell_data[name] = material
 
     # Saving
-    name = 'plots/different_chiral_metamaterials_2.xdmf'
+    if plates:
+        if Nz_one:
+            name = 'plots/different_chiral_metamaterials_2_with_plate.xdmf'
+        else:
+            name = 'plots/different_chiral_metamaterials_2_with_plate_2.xdmf'
+    else:
+        name = 'plots/different_chiral_metamaterials_2.xdmf'
     µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=None,
                                       F0=F0, displacement_field=True)
 
