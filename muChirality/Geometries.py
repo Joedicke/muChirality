@@ -690,8 +690,10 @@ def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
 
     Arguments
     ---------
-    nb_unit_cells: list of 2 ints
-                   Number of unit cells in x- and y-direction.
+    nb_unit_cells: list of 3 ints
+                   Number of unit cells in the RVE for each direction.
+                   Note that the number in z-direction should not matter
+                   because of the periodic boundary conditions.
     nb_grid_pts: list of 3 ints
                  Number of grid pts used to discretize ONE unit cell.
     a: float
@@ -739,16 +741,20 @@ def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
         mask = np.concatenate((mask, helper), axis=1)
     mask = np.concatenate((mask, finish), axis=1)
 
+    # Add unit cells in z-direction
+    helper = mask.copy()
+    for i in range(0, nb_unit_cells[2]-1):
+        mask = np.concatenate((mask, helper), axis=2)
+
     # New lengths of the complete RVE
     Lx = a + 2 * hx
     Ly = a + 2 * hy
-    Lz = a / nb_unit_cells[0]
+    Lz = a / nb_unit_cells[0] * nb_unit_cells[2]
 
     return mask, [Lx, Ly, Lz]
 
 def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
-                        radius_out, radius_inn, thickness, alpha=0,
-                        nb_unit_cells_z=1):
+                        radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
     a beam on each face of the RVE connected to the edges by four beams.
@@ -758,8 +764,8 @@ def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
 
     Arguments
     ---------
-    nb_unit_cells: list of 2 ints
-                   Number of unit cells in x- and y-direction.
+    nb_unit_cells: list of 3 ints
+                   Number of unit cells in the RVE for direction.
     nb_grid_pts: list of 3 ints
                  Number of grid pts used to discretize ONE unit cell.
     a: float
@@ -773,9 +779,6 @@ def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
     alpha: float
            Angle at wich the connecting beams are inclined.
            Default is 0.
-    nb_unit_cells_z: int
-                     Number of unit cells in z-direction before the plate follows.
-                     Default is 1.
     Returns
     -------
     mask: np.ndarray of floats
@@ -784,19 +787,14 @@ def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
     lengths: list of 3 floats
              Lengths of the complete RVE in each direction.
     """
-    # One unit cell
+    # Repeated unit cell
     mask, lengths = chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
                                             radius_out, radius_inn,
                                             thickness, alpha=alpha)
 
     # Definition of helper paramaters
-    if nb_unit_cells_z > 1:
-        helper = mask.copy()
-    hz = a / nb_grid_pts[2] / nb_unit_cells_z
+    hz = lengths[2] / mask.shape[2]
 
-    # Add unit cells in z-direction
-    for i in range(0, nb_unit_cells_z-1):
-        mask = np.concatenate((mask, helper), axis=2)
 
     # Add plate
     N_plate = round(thickness / 2 / hz)
@@ -811,7 +809,7 @@ def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
     # New lengths of the complete RVE
     Lx = lengths[0]
     Ly = lengths[1]
-    Lz = a / nb_unit_cells[0] * nb_unit_cells_z + N_plate * hz
+    Lz = lengths[2] + N_plate * hz
 
     return mask, [Lx, Ly, Lz]
 
