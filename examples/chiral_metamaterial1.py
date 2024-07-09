@@ -1,5 +1,5 @@
 """
-@file   test_chiral_metamaterial2.py
+@file   test_chiral_metamaterial1.py
 
 @author Indre  Joedicke <indre.joedicke@imtek.uni-freiburg.de>
 
@@ -68,12 +68,12 @@ def plot_comp_cylinder(folder, angle_mat, angle_mat2):
     ax.plot(twists, forces_cyl, color='red', marker='x', label='cylinder')
     ax.plot(twists, forces_chiral, color='blue', marker='x',
             label=f'chiral mat (angle={angle_mat}')
-    ax.plot(twists, forces_chiral2, color='blue', marker='x',
+    ax.plot(twists, forces_chiral2, color='green', marker='x',
             label=f'chiral mat (angle={angle_mat2}')
     ax.legend()
 
     # Save plot
-    name = folder + 'plot_data.pdf'
+    name = folder + 'comp_cylinder.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
 
@@ -87,25 +87,25 @@ def calculation_with_cylinder():
     lengths = [1, 1, 1]
     radius = 0.4
     thickness = 0.1
-    angle_mat = 0.4
+    angle_mat = 0.25
     angle_mat2 = 0.2
+
+    # Discretization
+    Nxyz = 40
+    nb_grid_pts = [Nxyz, Nxyz, Nxyz]
+    gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     hx = lengths[0] / nb_grid_pts[0]
     hy = lengths[1] / nb_grid_pts[1]
     hz = lengths[2] / nb_grid_pts[2]
 
-    # Discretization
-    Nxyz = 30
-    nb_grid_pts = [Nxyz, Nxyz, Nxyz]
-    gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
-
     # Material
     Young = 100
-    Poisson = 0
+    Poisson = 0.2
 
     # Loading
-    #twists = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2]
-    twists = [-0.1, 0.1, 0.2]
+    twists = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2]
+    #twists = [-0.1, 0.1, 0.2]
     delta_F = np.zeros((3, 3))
     x_rot_axis = lengths[0] / 2
     y_rot_axis = lengths[1] / 2
@@ -122,7 +122,8 @@ def calculation_with_cylinder():
     fft = 'mpi'
 
     # For saving
-    folder = f'results/chiral1/comp_cylinder_Nxyz={Nxyz}/'
+    folder = f'results/chiral1/Lz={lengths[2]}_radius={radius}_thick={thickness}'
+    folder += f'_Young={Young}_Poisson={Poisson}_Nxyz={Nxyz}/'
     F0 = np.eye(3)
 
     ### ----- Prepare saving ----- ###
@@ -135,7 +136,7 @@ def calculation_with_cylinder():
             os.makedirs(folder)
 
         # Copy this file into the folder
-        helper = 'cp chiral_metamaterial2_parallel.py ' + folder
+        helper = 'cp chiral_metamaterial1.py ' + folder
         os.system(helper)
 
     ### ----- Calculations ----- ###
@@ -150,10 +151,10 @@ def calculation_with_cylinder():
 
         ### ----- Calculation (cylinder) ----- ###
         # Define geometry
-        mask = geo.cylinder(nb_grid_pts, lengths_cyl, radius_out)
+        mask = geo.cylinder(nb_grid_pts, lengths, radius)
 
         # muSpectre cell initialization
-        cell = µ.Cell(nb_grid_pts, lengths_cyl, formulation, gradient,
+        cell = µ.Cell(nb_grid_pts, lengths, formulation, gradient,
                       weights=weights, fft=fft, communicator=MPI.COMM_WORLD)
         mask = mask[cell.fft_engine.subdomain_slices]
         mat = µ.material.MaterialLinearElastic1_3d.make(cell, "hard", Young, Poisson)
@@ -168,21 +169,21 @@ def calculation_with_cylinder():
         solver = µ.solvers.KrylovSolverCG(cell, cg_tol, maxiter, verbose)
 
         # Initialize Eigen class
-        eigen_class = EigenStrain(cell.pixels, twist, lengths_cyl, nb_grid_pts,
+        eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
                                   x_rot_axis, y_rot_axis)
 
         # Solving
         res = µ.solvers.newton_cg(cell, delta_F, solver, newton_tol, equil_tol,
                                   verbose, μ.solvers.IsStrainInitialised.No,
                                   µ.StoreNativeStress.No, eigen_class.eigen_strain_func)
-        shape = (3, 3, 5, *nb_grid_pts)
+        shape = (3, 3, cell.nb_quad_pts, *cell.nb_subdomain_grid_pts)
         stress = res.stress.reshape(shape, order='F')
         strain = res.grad.reshape(shape, order='F')
 
         # Calculate force in z-direction
         force_z = hx * hy * hz / 6 * np.sum(stress[2, 2])
         force_z += hx * hy * hz / 6 * np.sum(stress[2, 2, 0])
-        force_z = force_z / lengths_cyl[2]
+        force_z = Reduction(MPI.COMM_WORLD).sum(force_z) / lengths[2]
         forces_cyl[i_twist] = force_z
 
         # Delete parameters
@@ -224,14 +225,14 @@ def calculation_with_cylinder():
         res = µ.solvers.newton_cg(cell, delta_F, solver, newton_tol, equil_tol,
                                   verbose, μ.solvers.IsStrainInitialised.No,
                                   µ.StoreNativeStress.No, eigen_class.eigen_strain_func)
-        shape = (3, 3, 5, *nb_grid_pts)
+        shape = (3, 3, cell.nb_quad_pts, *cell.nb_subdomain_grid_pts)
         stress = res.stress.reshape(shape, order='F')
         strain = res.grad.reshape(shape, order='F')
 
         # Calculate force in z-direction
         force_z = hx * hy * hz / 6 * np.sum(stress[2, 2])
         force_z += hx * hy * hz / 6 * np.sum(stress[2, 2, 0])
-        force_z = force_z / lengths[2]
+        force_z = Reduction(MPI.COMM_WORLD).sum(force_z) / lengths[2]
         forces_chiral[i_twist] = force_z
 
         # Save one state for paraview (Only for serial calculations possible)
@@ -307,14 +308,14 @@ def calculation_with_cylinder():
         res = µ.solvers.newton_cg(cell, delta_F, solver, newton_tol, equil_tol,
                                   verbose, μ.solvers.IsStrainInitialised.No,
                                   µ.StoreNativeStress.No, eigen_class.eigen_strain_func)
-        shape = (3, 3, 5, *nb_grid_pts)
+        shape = (3, 3, cell.nb_quad_pts, *cell.nb_subdomain_grid_pts)
         stress = res.stress.reshape(shape, order='F')
         strain = res.grad.reshape(shape, order='F')
 
         # Calculate force in z-direction
         force_z = hx * hy * hz / 6 * np.sum(stress[2, 2])
         force_z += hx * hy * hz / 6 * np.sum(stress[2, 2, 0])
-        force_z = force_z / lengths[2]
+        force_z = Reduction(MPI.COMM_WORLD).sum(force_z) / lengths[2]
         forces_chiral2[i_twist] = force_z
 
         # Save one state for paraview (Only for serial calculations possible)
@@ -382,6 +383,7 @@ def calculation_with_cylinder():
     # Plot results
     if MPI.COMM_WORLD.rank == 0:
         plot_comp_cylinder(folder, angle_mat, angle_mat2)
+        print(f'Time (min) = {(time() - t) / 60}')
 
 if __name__ == "__main__":
     calculation_with_cylinder()

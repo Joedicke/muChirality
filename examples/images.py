@@ -1,10 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-#from matplotlib.patches import Polygon
-#from matplotlib.collections import PatchCollection
-#from mpl_toolkits.axes_grid1 import make_axes_locatable
-#from time import time
 
 mpl.rcParams['font.family'] = 'sans-serif'
 mpl.rcParams['font.sans-serif'] = ['Arial']
@@ -53,10 +49,13 @@ head_width_c = 0.01
 head_length_c = 1.5 * head_width_c
 width_c = 0.001
 
+# Fontsize
+fontsize = 20
+
 ### ----- Coordinates calculations ----- ###
 # Coordinates of bottom points
-B1_x = 0.8 * Lc * np.cos(angle_c)
-B1_y = 2 * Lc * np.sin(angle_c)
+B1_x = 1.8 * Lc
+B1_y = - 0.5 * Lc
 B2_x = B1_x - Lxy * np.sin(angle_c)
 B2_y = B1_y + Lxy * np.cos(angle_c)
 B3_x = B2_x + Lxy * np.cos(angle_c)
@@ -146,9 +145,9 @@ ax.arrow(0, 0, -Lc * np.sin(angle_c), Lc * np.cos(angle_c),
          color=color_c, width=width_c,
          length_includes_head=True, head_width = head_width_c,
          head_length=head_length_c)
-ax.text(Lc * 1.01, Lc * 0.1, 'x', color=color_c)
-ax.text(-Lc * 0.5, Lc * 1.005, 'y', color=color_c)
-ax.text(0, Lc * 1.05, 'z', color=color_c)
+ax.text(Lc * 0.8, - Lc * 0.25, 'x', color=color_c, fontsize=fontsize)
+ax.text(-Lc * 0.75, Lc * 0.7, 'y', color=color_c, fontsize=fontsize)
+ax.text(0, Lc * 1.05, 'z', color=color_c, fontsize=fontsize)
 
 # Plot undeformed beam
 ax.plot([B1_x, B2_x], [B1_y, B2_y], color=color_undef, linewidth=width_u, linestyle=style_u)
@@ -208,19 +207,19 @@ ax.arrow(U3_x, U3_y, D3_x - U3_x, D3_y - U3_y, color=color_twist,
 ax.arrow(U4_x, U4_y, D4_x - U4_x, D4_y - U4_y, color=color_twist,
          length_includes_head=True, head_width=head_width,
          head_length=head_length, width=width_t)
-ax.text(U1_x + (D1_x - U1_x) / 2, U1_y + (D1_y - U1_y) / 2, 'w',
-        color=color_twist, fontstyle='italic')
+ax.text(U1_x + 6 / 5 * (D1_x - U1_x), U1_y + (D1_y - U1_y) / 2, 'w',
+        color=color_twist, fontstyle='italic', ha='right', fontsize=fontsize)
 ax.text(U2_x + (D2_x - U2_x) / 2, U2_y + (D2_y - U2_y) / 2, 'w',
-        color=color_twist, fontstyle='italic', ha='right')
+        color=color_twist, fontstyle='italic', ha='right', fontsize=fontsize)
 ax.text(U3_x + (D3_x - U3_x) / 2, U3_y + (D3_y - U3_y) / 2, 'w',
-        color=color_twist, fontstyle='italic')
+        color=color_twist, fontstyle='italic', fontsize=fontsize)
 ax.text(U4_x + (D4_x - U4_x) / 2, U4_y + (D4_y - U4_y) / 2, 'w',
-        color=color_twist, fontstyle='italic', va='top')
+        color=color_twist, fontstyle='italic', va='top', fontsize=fontsize)
 
 ### ----- Save figure ----- ###
 name = 'results/rotation.pdf'
 fig.savefig(name, bbox_inches='tight')
-#plt.show()
+plt.show()
 plt.close(fig)
 
 ##################################################################

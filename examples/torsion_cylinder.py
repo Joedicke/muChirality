@@ -132,11 +132,11 @@ def plotting(folder, lengths, angle_per_length, displ=False):
     fig, ax = plt.subplots()
     fig.suptitle('Torsion stiffness')
     ax.set_xlabel('Nx=Ny')
-    ax.set_ylabel('Relative err (%)')
+    ax.set_ylabel('Stiffness')
     ax.plot(Nx, num_stiff, marker='x', label='numerical')
     ax.plot(Nx, ana_stiff, marker='x', label='analytical')
     ax.legend()
-    name = folder + 'plot_rel_error_stress.pdf'
+    name = folder + 'plot_stiffness.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
 
@@ -197,14 +197,14 @@ def plotting(folder, lengths, angle_per_length, displ=False):
         Nx = data[:, 0].astype(int)
         Ny = data[:, 1].astype(int)
         Nz = data[:, 2].astype(int)
-        rel_err_stress = data[:, 3]
+        rel_err_displ = data[:, 3]
 
         # Relative error of displacement
         fig, ax = plt.subplots()
         fig.suptitle('Error of displacement')
         ax.set_xlabel('Nx=Ny')
         ax.set_ylabel('Relative err (%)')
-        ax.plot(Nx, err_stiff, marker='x')
+        ax.plot(Nx, rel_err_displ, marker='x')
         name = folder + 'plot_rel_error_displ.pdf'
         fig.savefig(name, bbox_inches='tight')
         plt.close(fig)
@@ -221,9 +221,8 @@ def calculation():
     radius = 0.4
 
     # Discretization
-    #Nxy_list = [20, 30]
-    Nxy_list = [30, 50, 70, 90]
-    Nz = 50
+    Nxy_list = [30, 50, 70, 90, 110]
+    Nz = 30
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     # Material
@@ -231,7 +230,7 @@ def calculation():
     Poisson = 0
 
     # Loading
-    twist = 0.05
+    twist = 0.15
     x_rot_axis = lengths[0] / 2
     y_rot_axis = lengths[1] / 2
     delta_F = np.zeros((3, 3))
@@ -248,7 +247,16 @@ def calculation():
     fft = 'mpi' # Parallel fft
 
     # Folder for saving
-    folder = f'results/cylinder/method1_twist={twist}/'
+    folder = f'results/cylinder/method1/radius={radius}_Lz={lengths[2]}'
+    folder += f'_Young={Young}_Poisson={Poisson}_twist={twist}_Nz={Nz}/'
+
+    if MPI.COMM_WORLD.rank == 0:
+        print(f'Radius = {radius}')
+        print(f'Lz = {lengths[2]}')
+        print(f'Young = {Young}')
+        print(f'Poisson = {Poisson}')
+        print(f'twist = {twist}')
+        print(f'Nz = {Nz}')
 
     ### ----- Prepare saving ----- ###
     if MPI.COMM_WORLD.rank == 0:
@@ -345,9 +353,6 @@ def calculation():
         Y[2] += 0.75 * hy
         Y[3] += 0.25 * hy
         Y[4] += 0.75 * hy
-        #print(cell.fft_engine.subdomain_slices)
-        #X = X[cell.fft_engine.subdomain_slices]
-        #Y = Y[cell.fft_engine.subdomain_slices]
 
         # Calculate numerical moment
         helper = - stress_num[0, 2] * (Y - y_rot_axis)
@@ -358,7 +363,7 @@ def calculation():
 
         # Calculate detailed numerical moment in two cases
         if ((ind_N == 0) or (ind_N == len(Nxy_list)-1)) and\
-           (MPI.COMM_WORLD.rank == 0):
+           (MPI.COMM_WORLD.size == 1):
             z = np.arange(10*nb_grid_pts[2])
             z = z % 10
             z = z * hz / 10
@@ -376,16 +381,17 @@ def calculation():
         # Calculate numerical stiffness
         angle = np.arctan(twist * lengths[2])
         angle_per_length = angle / lengths[2]
-        stiffness = moment / angle_per_length # stiffness = moment / twist
+        stiffness = moment / angle_per_length
+        # stiffness = moment / twist
 
         ### ----- Analytical results ----- ###
         mask = mask.reshape(cell.nb_subdomain_grid_pts, order='F')
         # Analytical stress
         mu = Young / 2 / (1 + Poisson) # Shear modulus
         stress_ana = np.zeros(shape)
-        stress_ana[0, 2] = - angle * mu * (Y - y_rot_axis)
+        stress_ana[0, 2] = - twist * mu * (Y - y_rot_axis)
         stress_ana[0, 2] *= mask[None, :, :, :] # No stress in void
-        stress_ana[1, 2] = angle * mu * (X - x_rot_axis)
+        stress_ana[1, 2] = twist * mu * (X - x_rot_axis)
         stress_ana[1, 2] *= mask[None, :, :, :]
         stress_ana[2, 0] = stress_ana[0, 2]
         stress_ana[2, 1] = stress_ana[1, 2]
@@ -393,6 +399,7 @@ def calculation():
         # Moment and stiffness
         stiffness_ana = mu * np.pi * radius ** 4 / 2
         moment_ana = stiffness_ana * angle_per_length
+        # moment_ana = stiffness_ana * twist
 
         ### ----- Save results ----- ###
         # Stress error
@@ -444,6 +451,7 @@ def calculation():
         if MPI.COMM_WORLD.rank == 0:
             print(f'  stiff_num = {stiffness}')
             print(f'  stiff_ana = {stiffness_ana}')
+            print(f'  error stress (%) = {norm_stress_err}')
             print(f'  error stiff (%) = {error_stiff}')
 
         ### ----- Displacement ----- ###
@@ -484,11 +492,15 @@ def calculation():
                 np.savetxt(f, [err], newline=' ')
                 print('', file=f)
 
+            print(f'  error displ (%) = {err}')
+
     ### ----- Plot data ----- ###
     if MPI.COMM_WORLD.size == 1:
         plotting(folder, lengths, angle_per_length, displ=True)
+        # plotting(folder, lengths, twist, displ=True)
     else:
         plotting(folder, lengths, angle_per_length)
+        # plotting(folder, lengths, angle_per_length)
 
     # Save deformed geometry if calculation is serial
     if MPI.COMM_WORLD.size == 1:
@@ -522,8 +534,9 @@ def calculation_serial():
     radius = 0.4
 
     # Discretization
-    Nxy_list = [20, 30]
+    #Nxy_list = [30, 50, 70, 90]
     #Nxy_list = [30, 50, 70, 90, 110]
+    Nxy_list = [30]
     Nz = 30
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
@@ -548,7 +561,14 @@ def calculation_serial():
     verbose          = µ.Verbosity.Silent
 
     # Folder for saving
-    folder = 'results/cylinder/data/'
+    folder = 'results/cylinder/test/'
+
+    print(f'Radius = {radius}')
+    print(f'Lz = {lengths[2]}')
+    print(f'Young = {Young}')
+    print(f'Poisson = {Poisson}')
+    print(f'twist = {angle}')
+    print(f'Nz = {Nz}')
 
     # What to test
     abs_err_stress = np.empty(len(Nxy_list))
@@ -677,154 +697,10 @@ def calculation_serial():
         print(f'  stiff_num = {stiff}')
         print(f'  stiff_ana = {stiffness_ana}')
         print(f'  error stiff (%) = {rel_err_stiff[ind_N]}')
-    a = b
-
-    ### ----- Plotting ----- ###
-    stress_labels = ['xx', 'xy', 'xz', 'yy', 'yz', 'zz']
-    stress_indices = [[0, 0], [0, 1], [0, 2], [1, 1], [1, 2], [2, 2]]
-
-    # Plot stress distribution
-    index = 0
-    for i in range(6):
-        # Prepare figure
-        fig, axes = plt.subplots(2, 2, figsize=(10, 8))
-        title = 'Stress_' + stress_labels[i] + f' (0.th quad pt) at'
-        title += f' z={z[index]}'
-        fig.suptitle(title)
-        axes[0, 0].set_title(f'Value (Nx=Ny={Nxy_list[0]})')
-        axes[0, 1].set_title(f'Value (Nx=Ny={Nxy_list[-1]})')
-        axes[1, 0].set_title(f'Error (Nx=Ny={Nxy_list[0]})')
-        axes[1, 1].set_title(f'Error (Nx=Ny={Nxy_list[-1]})')
-        axes[0, 0].set_aspect('equal')
-        axes[0, 1].set_aspect('equal')
-        axes[1, 0].set_aspect('equal')
-        axes[1, 1].set_aspect('equal')
-
-        # Plot stress + err coarse
-        stress = stress_coarse[stress_indices[i][0], stress_indices[i][1],
-                               0, :, :, index]
-        x = np.linspace(0, lengths[0], Nxy_list[0]+1)
-        y = np.linspace(0, lengths[1], Nxy_list[0]+1)
-        im = axes[0, 0].pcolormesh(x, y, stress.T, rasterized=True)
-        fig.colorbar(im, ax=axes[0, 0])
-        stress = err_stress_coarse[stress_indices[i][0], stress_indices[i][1],
-                               0, :, :, index]
-        im = axes[1, 0].pcolormesh(x, y, stress.T, rasterized=True)
-        fig.colorbar(im, ax=axes[1, 0])
-
-        # Plot stress + err fine
-        stress = stress_fine[stress_indices[i][0], stress_indices[i][1],
-                             0, :, :, index]
-        x = np.linspace(0, lengths[0], Nxy_list[-1]+1)
-        y = np.linspace(0, lengths[1], Nxy_list[-1]+1)
-        im = axes[0, 1].pcolormesh(x, y, stress.T, rasterized=True)
-        fig.colorbar(im, ax=axes[0, 1])
-        stress = err_stress_fine[stress_indices[i][0], stress_indices[i][1],
-                             0, :, :, index]
-        im = axes[1, 1].pcolormesh(x, y, stress.T, rasterized=True)
-        fig.colorbar(im, ax=axes[1, 1])
-
-        # Save figure
-        name = folder + 'stress_' + stress_labels[i] + '_distribution.pdf'
-        fig.savefig(name, bbox_inches='tight')
-        plt.close(fig)
-
-    # Plot stress error
-    fig, ax = plt.subplots(2)
-    fig.suptitle('Error of stress')
-    ax[0].set_ylabel('Absolute')
-    ax[0].set_xlabel('Nx=Ny')
-    ax[1].set_ylabel('Relative (%)')
-    ax[1].set_xlabel('Nx=Ny')
-    ax[0].plot(Nxy_list, abs_err_stress, marker='x')
-    ax[1].plot(Nxy_list, rel_err_stress, marker='x')
-    name = folder + 'stress_error.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
-
-    # Plot displ error
-    fig, ax = plt.subplots()
-    fig.suptitle('Error of displacement')
-    ax.set_xlabel('Nx=Ny')
-    ax.set_ylabel('Relative err (%)')
-    ax.plot(Nxy_list, rel_err_displ, marker='x')
-    name = folder + 'displ_error.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
-
-    # Plot force error
-    fig, ax = plt.subplots()
-    fig.suptitle('Error of force_z')
-    ax.set_xlabel('Nx=Ny')
-    ax.set_ylabel('Absolute err')
-    ax.plot(Nxy_list, abs_err_force, marker='x')
-    name = folder + 'force_error.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
-
-    # Plot moment error
-    fig, ax = plt.subplots()
-    fig.suptitle('Error of moment')
-    ax.set_xlabel('Nx=Ny')
-    ax.set_ylabel('Relative err (%)')
-    ax.plot(Nxy_list, rel_err_moment, marker='x')
-    name = folder + 'moment_error.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
-
-    # Plot stiffness error
-    fig, ax = plt.subplots()
-    fig.suptitle('Error of stiffness')
-    ax.set_xlabel('Nx=Ny')
-    ax.set_ylabel('Relative err (%)')
-    ax.plot(Nxy_list, rel_err_stiff, marker='x')
-    name = folder + 'stiffness_error.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
-
-    # Plot dependence of moment and z
-    fig, ax = plt.subplots()
-    fig.suptitle('Moment depending on z')
-    ax.set_xlabel('z')
-    ax.set_ylabel('Moment')
-    ax.plot([0, lengths[2]], [moment_ana, moment_ana],
-            label='analyt',
-            linestyle=':', color='black', linewidth=4)
-    z = np.linspace(0, lengths[2], moment_of_z_coarse.size)
-    ax.plot(z, moment_of_z_coarse, label=f'Nx=Ny={Nxy_list[0]}',
-            linestyle='-', color='blue')
-    ax.plot([0, lengths[2]], [moment_coarse, moment_coarse],
-            label=f'Nx=Ny={Nxy_list[0]} (aver.)',
-            linestyle='--', color='blue')
-    z = np.linspace(0, lengths[2], moment_of_z_fine.size)
-    ax.plot(z, moment_of_z_fine, label=f'Nx=Ny={Nxy_list[-1]}',
-            linestyle='-', color='red')
-    ax.plot([0, lengths[2]], [moment_fine, moment_fine],
-            label=f'Nx=Ny={Nxy_list[-1]} (aver.)',
-            linestyle='--', color='red')
-    ax.legend()
-    name = folder + 'moment_of_z.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
-
-    plt.show()
-
-    # Save file for paraview
-    F0 = np.eye(3)
-    cell_data = {}
-    material = np.stack((mask, mask, mask, mask, mask), axis=0)
-    material = material.flatten(order='F')
-    material = material.reshape((1, -1))
-    stress = stress_num.reshape((3, 3, -1), order='F').T.swapaxes(1, 2)
-    stress = stress.reshape((1, -1, 3, 3)).copy()
-    strain = strain_num.reshape((3, 3, -1), order='F').T.swapaxes(1, 2)
-    strain = strain.reshape((1, -1, 3, 3)).copy()
-    cell_data = {"material": material, "stress_field": stress, "strain_field": strain}
-    point_data = {"displ": displ.reshape((3, -1), order='F').T}
-    name = folder + 'cylinder.xdmf'
-    µ.linear_finite_elements.write_3d(name, cell, cell_data=cell_data, point_data=point_data,
-                                      F0=F0, displacement_field=True)
+        print(f'  error stress (%) = {rel_err_stress[ind_N]}')
+        print(f'  error displ (%) = {rel_err_displ[ind_N]}')
 
 
 if __name__ == "__main__":
     calculation()
+    #calculation_serial()

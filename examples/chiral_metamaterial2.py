@@ -175,7 +175,7 @@ def calculation_mult_unit_cells():
     restart = False
     plates = False
     Nz_changes = False
-    Nz = 1
+    Nz = 2
 
     # Discretization
     dim = 3
@@ -243,7 +243,7 @@ def calculation_mult_unit_cells():
             os.makedirs(folder)
 
         # Copy this file into the folder
-        helper = 'cp chiral_metamaterial2_parallel.py ' + folder
+        helper = 'cp chiral_metamaterial2.py ' + folder
         os.system(helper)
 
         # File  for saving data
@@ -615,5 +615,5 @@ def calculation_with_cylinder():
         plot_comp_cylinder(folder)
 
 if __name__ == "__main__":
-    #calculation_mult_unit_cells()
-    calculation_with_cylinder()
+    calculation_mult_unit_cells()
+    #calculation_with_cylinder()

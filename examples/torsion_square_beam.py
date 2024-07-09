@@ -86,15 +86,15 @@ def calculation():
     """
     ### ----- Parameter definitions ----- ###
     # Geometry
-    lengths = [1, 1, 3]
+    lengths = [1, 1, 10]
     L_beam = 0.6
     dim = len(lengths)
 
     # Discretization
-    Nxy_list = [30, 50, 70, 90]
+    Nxy_list = [30, 50, 70, 90, 110]
     #Nxy_list = [130]
     #Nxy_list = [30, 50, 70, 90, 110, 130]
-    Nz = 50
+    Nz = 30
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     # Material
@@ -107,7 +107,7 @@ def calculation():
     y_rot_axis = lengths[1] / 2
     delta_F = np.zeros((3, 3))
 
-    # Formulation
+      # Formulation
     formulation = µ.Formulation.small_strain
 
     # muSpectre solver parameters
@@ -120,6 +120,10 @@ def calculation():
 
     # Folder for saving
     folder = 'results/square_beam/method2/'
+    folder += f'thick={L_beam}_Lz={lengths[2]}_Young={Young}_'
+    folder += f'Poisson={Poisson}_twist={twist}_Nz={Nz}/'
+
+    print(folder)
 
     ### ----- Prepare saving ----- ###
     if MPI.COMM_WORLD.rank == 0:
@@ -220,7 +224,7 @@ def calculation():
         moment += hx * hy * hz / 6 * np.sum(helper[0])
         moment = Reduction(MPI.COMM_WORLD).sum(moment) / lengths[2]
 
-        angle_per_length = np.arctan(twist * lengths[2]) / lengths[2]
+        # angle_per_length = np.arctan(twist * lengths[2]) / lengths[2]
         # stiffness = moment / angle_per_length
         stiffness = moment / twist
 
@@ -238,7 +242,7 @@ def calculation():
 
         # Save results in file
         if MPI.COMM_WORLD.rank == 0:
-            with open(name, 'a') as f:
+             with open(name, 'a') as f:
                 np.savetxt(f, nb_grid_pts, newline=' ')
                 np.savetxt(f, [stiffness_ana, stiffness, error], newline=' ')
                 print('', file=f)
