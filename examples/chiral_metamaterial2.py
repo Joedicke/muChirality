@@ -1,5 +1,5 @@
 """
-@file   test_chiral_metamaterial2.py
+@file   chiral_metamaterial2.py
 
 @author Indre  Joedicke <indre.joedicke@imtek.uni-freiburg.de>
 
@@ -35,7 +35,9 @@ Program grant you additional permission to convey the resulting work.
 import sys
 import os
 import shutil
-sys.path.insert(0, os.path.join(os.getcwd(), "/usr/local/lib/python3.8/site-packages"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmufft/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/python"))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,54 +46,12 @@ from time import time
 import muSpectre as µ
 from NuMPI import MPI
 from NuMPI.Tools import Reduction
+from NuMPI.IO import save_npy
 
 from muChirality.EigenStrainTorsion import EigenStrain
 from muChirality.CalculationsTorsion import calculations
 from muSpectre.gradient_integration import get_complemented_positions
 import muChirality.Geometries as geo
-
-def plot_on_paper_results(folder):
-    imfile = 'results_paper.jpg'
-    # Read data
-    data_file = folder + 'data.txt'
-    data = np.loadtxt(data_file, skiprows=1)
-    N_uc_list = data[:, 0]
-    E_eff_z = data[:, 2]
-    twist_per_strain = data[:, 4]
-
-    # Other parameters
-    dpi = 100
-    color = 'green'
-    marker = 'x'
-    markersize = 12
-    linewidth = 4
-
-    ### ----- Plot data ----- ###
-    # Prepare figure
-    im = image.imread(imfile)
-    fig, axim = plt.subplots(figsize=(im.shape[1]/dpi, im.shape[0]/dpi), dpi=dpi)
-    axim.imshow(im, aspect='equal')
-    axim.axis('off')
-
-    # Plot E_eff_z
-    ax = fig.add_axes([0.25, 0.17, 0.635, 0.295], facecolor='None')
-    ax.set_xlim([0.49, 5.49])
-    ax.set_ylim([0, 45])
-    ax.plot(nb_unit_cells, E_eff_z, marker=marker, linewidth=linewidth,
-            markersize=markersize, color=color)
-    ax.axis('off')
-
-    # Plot twist per strain
-    ax = fig.add_axes([0.25, 0.474, 0.635, 0.297], facecolor='None')
-    ax.set_xlim([0.49, 5.49])
-    ax.set_ylim([-0.21, 2.48])
-    ax.plot(nb_unit_cells, twist_per_strain, marker=marker, linewidth=linewidth,
-        markersize=markersize, color=color)
-    ax.axis('off')
-
-    name = folder + 'plot_on_paper.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.close(fig)
 
 def plot_with_paper(folder):
     ### ----- Data ----- ###
@@ -164,18 +124,18 @@ def calculation_mult_unit_cells():
     t = time()
 
     # Geometry
-    a = 0.5
+    a = 0.5 # in mm
     thickness = 0.06 * a
     radius_out = 0.4 * a
     radius_inn = 0.34 * a
     angle_mat = np.pi * 35 / 180
 
     # Nb of unit cells in RVE
-    N_uc_list = [1, 2]
+    N_uc_list = [1, 3]
     restart = False
     plates = False
     Nz_changes = False
-    Nz = 2
+    Nz = 1
 
     # Discretization
     dim = 3
@@ -199,11 +159,11 @@ def calculation_mult_unit_cells():
         print()
 
     # Material
-    Young = 2600
+    Young = 2600 # in MPa
     Poisson = 0.4
 
     # Loading
-    twist = 0.05
+    twist = 0.05 # in 1/mm
     #x_rot_axis = lengths[0] / 2
     #y_rot_axis = lengths[1] / 2
     delta_eps1 = np.zeros((3, 3))
@@ -223,14 +183,20 @@ def calculation_mult_unit_cells():
 
     # For saving
     F0 = np.eye(3)
-    folder = 'results/chiral2/'
-    if Nz_changes:
-        folder += 'Nz_changes'
-    else:
-        folder += f'Nz={Nz}'
+    folder = 'results_paper/chiral_Nuc_z={Nz}_Nxyz={N}/'
     if plates:
-        folder += '_plates'
-    folder += f'Nxyz={nb_grid_pts_uc[0]}/'
+        folder += 'with_plates/'
+    else:
+        folder += 'mult_unit_cells/'
+    if Nz_changes:
+        folder += 'Nucz_changes_'
+    else:
+        folder += f'Nuc_z={Nz}_'
+    folder += f'Nxyz={nb_grid_pts_uc[0]}_twist={twist}'
+    if MPI.COMM_WORLD.size == 1:
+        folder += '/'
+    else:
+        folder += '_parall/'
     name = folder + 'data.txt'
 
     ### ----- Prepare saving ----- ###
@@ -255,6 +221,7 @@ def calculation_mult_unit_cells():
 
     # Calculation
     for index, N_uc in enumerate(N_uc_list):
+        t = time()
         ### ----- Define geometry ----- ###
         if Nz_changes:
             nb_unit_cells = [N_uc, N_uc, N_uc]
@@ -331,7 +298,7 @@ def calculation_mult_unit_cells():
         force = Reduction(MPI.COMM_WORLD).sum(force) / lengths[2]
 
         # Comparison with paper
-        twist_in_degree = np.arctan(twist * lengths[2]) / np.pi * 180
+        twist_in_degree = np.arctan(twist * lengths[2] * 2 * N_uc) / np.pi * 180
         strain_zz_in_percent = force / stiff_z * 100
 
         twist_per_strain = twist_in_degree / strain_zz_in_percent
@@ -342,16 +309,66 @@ def calculation_mult_unit_cells():
             print('Force:', force)
             print('Twist/strain (degree/%):', twist_per_strain)
             print(f'Finished calculation {index+1} of {len(N_uc_list)}')
-            print()
+            t = (time() - t) / 60
+            print(f'Time for calculation = {t:.2} min')
 
         ### ----- Save results ----- ###
+        t = time()
+        # Save effective parameters
         if MPI.COMM_WORLD.rank == 0:
             with open(name, 'a') as f:
                 np.savetxt(f, [N_uc, stiff_z, E_eff_z, force, twist_per_strain], newline=' ')
                 print('', file=f)
 
+        # Save strain
+        folder_strain = folder + f'N_uc={N_uc}_strains/'
+        if (MPI.COMM_WORLD.rank == 0):
+            # Create folder
+            if not os.path.exists(folder_strain):
+                os.makedirs(folder_strain)
+        for i_quad in range(cell.nb_quad_pts):
+            name_strain = folder_strain + f'quad_pt_{i_quad}_entry_'
+            save_npy((name_strain + '00.npy'), strain[0, 0, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_strain + '01.npy'), strain[0, 1, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_strain + '02.npy'), strain[0, 2, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_strain + '11.npy'), strain[1, 1, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_strain + '12.npy'), strain[1, 2, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_strain + '22.npy'), strain[2, 2, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+
+        folder_stress = folder + f'N_uc={N_uc}_stresses/'
+        if (MPI.COMM_WORLD.rank == 0):
+            # Create folder
+            if not os.path.exists(folder_stress):
+                os.makedirs(folder_stress)
+        for i_quad in range(cell.nb_quad_pts):
+            name_stress = folder_stress + f'quad_pt_{i_quad}_entry_'
+            save_npy((name_stress + '00.npy'), stress[0, 0, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_stress + '01.npy'), stress[0, 1, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_stress + '02.npy'), stress[0, 2, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_stress + '11.npy'), stress[1, 1, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_stress + '12.npy'), stress[1, 2, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            save_npy((name_stress + '22.npy'), stress[2, 2, i_quad], tuple(cell.subdomain_locations),
+                     tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+
+        if (MPI.COMM_WORLD.rank == 0):
+            t = (time() - t) / 60
+            print(f'Time for saving = {t:.2} min')
+            print()
+
         # Save deformed state only if the calculation is not parallel
-        if MPI.COMM_WORLD.size == 1:
+        save_displacement = False
+        if (MPI.COMM_WORLD.size == 1) and save_displacement:
             # Calculate position + displacement
             x = np.linspace(0, lengths[0], nb_grid_pts[0]+1, endpoint=True)
             y = np.linspace(0, lengths[1], nb_grid_pts[1]+1, endpoint=True)
@@ -386,7 +403,7 @@ def calculation_mult_unit_cells():
                                               F0=F0, displacement_field=False)
 
     ### ----- Plot results ----- ###
-    if MPI.COMM_WORLD. rank == 0:
+    if MPI.COMM_WORLD.rank == 0:
         plot_with_paper(folder)
 
 ###################################################################################################
@@ -617,3 +634,6 @@ def calculation_with_cylinder():
 if __name__ == "__main__":
     calculation_mult_unit_cells()
     #calculation_with_cylinder()
+    #folder = 'results/results_nemo/chiral2/mult_unit_cells/'
+    #folder = folder + 'Nuc_z=1_Nxyz=50_twist=0.05_strain=0.0/'
+    #plot_with_paper(folder)

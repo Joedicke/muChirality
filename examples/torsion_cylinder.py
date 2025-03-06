@@ -36,10 +36,9 @@ import os
 import shutil
 
 # Default path of the library
-sys.path.insert(0, os.path.join(os.getcwd(), "/usr/local/lib/python3.8/site-packages"))
-sys.path.insert(0, os.path.join(os.getcwd(), "../muspectre/meson-build-release/language_bindings/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "../muspectre/meson-build-release/language_bindings/libmufft/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "../muspectre/meson-build-release/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmufft/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/python"))
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -47,6 +46,7 @@ import matplotlib.pyplot as plt
 import muSpectre as µ
 from NuMPI import MPI
 from NuMPI.Tools import Reduction
+from NuMPI.IO import save_npy
 
 from muChirality.EigenStrainTorsion import EigenStrain
 from muChirality.Geometries import cylinder
@@ -247,7 +247,7 @@ def calculation():
     fft = 'mpi' # Parallel fft
 
     # Folder for saving
-    folder = f'results/cylinder/method1/radius={radius}_Lz={lengths[2]}'
+    folder = f'results/cylinder/radius={radius}_Lz={lengths[2]}'
     folder += f'_Young={Young}_Poisson={Poisson}_twist={twist}_Nz={Nz}/'
 
     if MPI.COMM_WORLD.rank == 0:
@@ -360,6 +360,10 @@ def calculation():
         moment = hx * hy * hz / 6 * np.sum(helper) # Average moment
         moment += hx * hy * hz / 6 * np.sum(helper[0])
         moment = Reduction(MPI.COMM_WORLD).sum(moment) / lengths[2]
+        #helper_yz = np.sum(stress_num[1, 2], axis=2)
+        #helper_xz = np.sum(stress_num[0, 2], axis=2)
+        #moment = 1/6 * stress_num[1, 2] * (X - x_rot_axis)
+        
 
         # Calculate detailed numerical moment in two cases
         if ((ind_N == 0) or (ind_N == len(Nxy_list)-1)) and\
@@ -381,8 +385,8 @@ def calculation():
         # Calculate numerical stiffness
         angle = np.arctan(twist * lengths[2])
         angle_per_length = angle / lengths[2]
-        stiffness = moment / angle_per_length
-        # stiffness = moment / twist
+        #stiffness = moment / angle_per_length
+        stiffness = moment / twist
 
         ### ----- Analytical results ----- ###
         mask = mask.reshape(cell.nb_subdomain_grid_pts, order='F')
@@ -398,13 +402,41 @@ def calculation():
 
         # Moment and stiffness
         stiffness_ana = mu * np.pi * radius ** 4 / 2
-        moment_ana = stiffness_ana * angle_per_length
-        # moment_ana = stiffness_ana * twist
+        # moment_ana = stiffness_ana * angle_per_length
+        moment_ana = stiffness_ana * twist
 
         ### ----- Save results ----- ###
         # Stress error
         error_stress = stress_ana - stress_num
         norm_stress_err = np.linalg.norm(error_stress) / np.linalg.norm(stress_ana) * 100
+
+        if (ind_N == 0) or (ind_N == len(Nxy_list)-1):
+            f = folder + f'stresses_Nxy={Nxy}/'
+            if (MPI.COMM_WORLD.rank == 0):
+                print(f)
+                # Create folder
+                if not os.path.exists(f):
+                    os.makedirs(f)
+            for i_quad in range(cell.nb_quad_pts):
+                name_stress = f + f'stress_ana_quad_pt_{i_quad}_entry_'
+                save_npy((name_stress + '02.npy'), stress_ana[0, 2, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                save_npy((name_stress + '12.npy'), stress_ana[1, 2, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                name_stress = f + f'error_stress_quad_pt_{i_quad}_entry_'
+                save_npy((name_stress + '00.npy'), error_stress[0, 0, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                save_npy((name_stress + '01.npy'), error_stress[0, 1, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                save_npy((name_stress + '02.npy'), error_stress[0, 2, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                save_npy((name_stress + '11.npy'), error_stress[1, 1, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                save_npy((name_stress + '12.npy'), error_stress[1, 2, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+                save_npy((name_stress + '22.npy'), error_stress[2, 2, i_quad], tuple(cell.subdomain_locations),
+                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+
         if (MPI.COMM_WORLD.rank == 0) and ((ind_N == 0) or (ind_N == len(Nxy_list)-1)):
             f = folder + f'data_stress_error_nb_grid_pts={nb_grid_pts[0]}x'
             f += f'{nb_grid_pts[1]}x{nb_grid_pts[2]}.txt'

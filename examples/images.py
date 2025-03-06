@@ -21,10 +21,10 @@ Lz = 0.5
 Lxy = 0.3
 
 # Rotation
-twist = 0.14
+twist = 0.09
 
 # Coordinate system
-Lc = 0.1
+Lc = 0.12
 angle_c = np.pi / 10
 
 # Colors
@@ -32,6 +32,7 @@ color_def = 'black'
 color_undef = 'grey'
 color_twist = 'blue'
 color_c = 'black'
+color_rot_axis = 'red'
 
 # Lines
 width_d = 1.5
@@ -39,6 +40,7 @@ width_u = 1.5
 style_u = '-'
 style_u_inv = ''
 style_inv = '--'
+style_rot_axis = ':'
 
 
 # Arrows
@@ -74,59 +76,34 @@ U4_x = B4_x
 U4_y = B4_y + Lz
 
 # Coordinates of top points (deformed geometry)
-D1_x = B1_x - twist * np.sin(np.pi / 4)
-D1_y = B1_y + Lz + twist * np.cos(np.pi / 4)
-D2_x = B2_x + twist * np.cos(np.pi / 4)
-D2_y = B2_y + Lz + twist * np.sin(np.pi / 4)
-D3_x = B3_x + twist * np.sin(np.pi / 4)
-D3_y = B3_y + Lz - twist * np.cos(np.pi / 4)
-D4_x = B4_x - twist * np.cos(np.pi / 4)
-D4_y = B4_y + Lz - twist * np.sin(np.pi / 4)
+# Note: magnitude of rotational displacement in both directions is
+# twist * sin(pi/4) = 1 / sqrt(2) * twist
+# or twist * cos(pi/4) = 1 / sqrt(2) * twist
+disp = twist / np.sqrt(2)
+#D1_x = U1_x + twist * np.sin(np.pi / 4)
+#D1_y = U1_y - twist * np.cos(np.pi / 4)
+#D2_x = U2_x - twist * np.cos(np.pi / 4)
+#D2_y = U2_y - twist * np.sin(np.pi / 4)
+#D3_x = U3_x - twist * np.sin(np.pi / 4)
+#D3_y = U3_y + twist * np.cos(np.pi / 4)
+#D4_x = U4_x + twist * np.cos(np.pi / 4)
+#D4_y = U4_y + twist * np.sin(np.pi / 4)
+D1_x = U1_x + disp * np.cos(angle_c) + disp * np.sin(angle_c)
+D1_y = U1_y + disp * np.sin(angle_c) - disp * np.cos(angle_c)
+D2_x = U2_x - disp * np.cos(angle_c) + disp * np.sin(angle_c)
+D2_y = U2_y - disp * np.sin(angle_c) - disp * np.cos(angle_c)
+D3_x = U3_x - disp * np.cos(angle_c) - disp * np.sin(angle_c)
+D3_y = U3_y - disp * np.sin(angle_c) + disp * np.cos(angle_c)
+D4_x = U4_x + disp * np.cos(angle_c) - disp * np.sin(angle_c)
+D4_y = U4_y + disp * np.sin(angle_c) + disp * np.cos(angle_c)
 
-# Intersection points
-t = B1_y - B2_y + (B2_x - B1_x) / (D1_x - B1_x) * (D1_y - B1_y)
-t = t / (D2_y - B2_y - (D2_x - B2_x) / (D1_x - B1_x) * (D1_y - B1_y))
-s = (B2_x + t * (D2_x - B2_x) - B1_x) / (D1_x - B1_x)
-C1_x = B1_x + s * (D1_x - B1_x)
-C1_y = B1_y + s * (D1_y - B1_y)
-if s < 0:
-    m = f'Error at the calculation of the first instersection: s is smaller then 0.'
-    raise ValueError(m)
-elif t > 1:
-    m = f'Error at the calculation of the first instersection: t is larger then 1.'
-    raise ValueError(m)
-elif t > 0 and s < 1:
-    case1 = 0
-elif t < 0:
-    case1 = 1
-elif s > 1:
-    case1 = 2
-else:
-    m = f'Error at the calculation of the first intersection: '
-    m += f's = {s} and t = {t}'
-    raise ValueError(m)
-
-t = B4_y - B3_y + (B3_x - B4_x) / (D4_x - B4_x) * (D4_y - B4_y)
-t = t / (D3_y - B3_y - (D3_x - B3_x) / (D4_x - B4_x) * (D4_y - B4_y))
-s = (B3_x + t * (D3_x - B3_x) - B4_x) / (D4_x - B4_x)
-C2_x = B4_x + s * (D4_x - B4_x)
-C2_y = B4_y + s * (D4_y - B4_y)
-if s < 0:
-    m = f'Error at the calculation of the second instersection: s is smaller then 0.'
-    raise ValueError(m)
-elif t > 1:
-    m = f'Error at the calculation of the second instersection: t is larger then 1.'
-    raise ValueError(m)
-elif t > 0 and s < 1:
-    case2 = 0
-elif t < 0:
-    case2 = 1
-elif s > 1:
-    case2 = 2
-else:
-    m = f'Error at the calculation of the second intersection: '
-    m += f's = {s} and t = {t}'
-    raise ValueError(m)
+# Coordinates of rotation axis
+A_x = B1_x + Lxy / 2 * np.cos(angle_c) - Lxy / 2 * np.sin(angle_c)
+A2_y = B1_y + (A_x - B1_x) * np.tan(angle_c)
+A1_y = A2_y - 1.2 * Lc
+A4_y = U1_y + Lxy / 2 * np.sin(angle_c) + Lxy / 2 * np.cos(angle_c)
+A5_y = D3_y + 0.2 * Lxy
+A3_y = B1_y + Lxy / 2 * np.cos(angle_c) + Lxy / 2 * np.sin(angle_c)
 
 ### ----- Plotting small strain rotation ----- ###
 fig, ax = plt.subplots()
@@ -163,36 +140,35 @@ ax.plot([B2_x, B3_x], [B2_y, B3_y], color=color_undef, linewidth=width_u, linest
 ax.plot([B3_x, B4_x], [B3_y, B4_y], color=color_undef, linewidth=width_u, linestyle=style_u_inv)
 ax.plot([B3_x, U3_x], [B3_y, U3_y], color=color_undef, linewidth=width_u, linestyle=style_u_inv)
 
+# Plot rotation axis
+ax.plot([A_x, A_x], [A1_y, A2_y], color=color_rot_axis)
+ax.plot([A_x, A_x], [A2_y, A4_y], color=color_rot_axis, linestyle=style_inv)
+ax.plot([A_x, A_x], [A4_y, A5_y], color=color_rot_axis)
+
+ax.arrow(A_x, A1_y, 0, Lc, color=color_rot_axis, length_includes_head=True,
+         head_width=head_width, head_length=head_length, width=width_t)
+ax.text(A_x + 0.2 * Lc, A1_y + 0.25 * Lc, '$\hat{n}$', color=color_rot_axis,
+        fontsize=fontsize)
+
+# Plot reference point
+ax.plot([A_x, A_x], [A3_y, A3_y], color=color_rot_axis, marker='o', markersize=5)
+ax.text(A_x + 0.2 * Lc, A3_y - 0.2 * Lc, r'$\vec X_0$', color=color_rot_axis, fontsize=fontsize)
 
 # Plot deformed beam
 ax.plot([D1_x, D2_x], [D1_y, D2_y], color=color_def, linewidth=width_d)
 ax.plot([D1_x, D4_x], [D1_y, D4_y], color=color_def, linewidth=width_d)
 ax.plot([D2_x, D3_x], [D2_y, D3_y], color=color_def, linewidth=width_d)
 ax.plot([D3_x, D4_x], [D3_y, D4_y], color=color_def, linewidth=width_d)
+
 ax.plot([B1_x, D1_x], [B1_y, D1_y], color=color_def, linewidth=width_d)
+ax.plot([B2_x, D2_x], [B2_y, D2_y], color=color_def, linewidth=width_d)
+ax.plot([B3_x, D3_x], [B3_y, D3_y], color=color_def, linewidth=width_d, linestyle=style_inv)
 ax.plot([B4_x, D4_x], [B4_y, D4_y], color=color_def, linewidth=width_d)
+
+ax.plot([B1_x, B2_x], [B1_y, B2_y], color=color_def, linewidth=width_d)
 ax.plot([B1_x, B4_x], [B1_y, B4_y], color=color_def, linewidth=width_d)
 ax.plot([B2_x, B3_x], [B2_y, B3_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-if case1 == 0:
-    ax.plot([B1_x, B2_x], [B1_y, B2_y], color=color_def, linewidth=width_d)
-    ax.plot([B2_x, C1_x], [B2_y, C1_y], color=color_def, linewidth=width_d)
-    ax.plot([C1_x, D2_x], [C1_y, D2_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-elif case1 == 1:
-    ax.plot([B1_x, B2_x], [B1_y, B2_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-    ax.plot([B2_x, D2_x], [B2_y, D2_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-elif case1 == 2:
-    ax.plot([B1_x, B2_x], [B1_y, B2_y], color=color_def, linewidth=width_d)
-    ax.plot([B2_x, D2_x], [B2_y, D2_y], color=color_def, linewidth=width_d)
-if case2 == 0:
-    ax.plot([B3_x, B4_x], [B3_y, B4_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-    ax.plot([B3_x, C2_x], [B3_y, C2_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-    ax.plot([C2_x, D3_x], [C2_y, D3_y], color=color_def, linewidth=width_d)
-elif case2 == 1:
-    ax.plot([B3_x, B4_x], [B3_y, B4_y], color=color_def, linewidth=width_d)
-    ax.plot([B3_x, D3_x], [B3_y, D3_y], color=color_def, linewidth=width_d)
-elif case2 == 2 and plot_inv:
-    ax.plot([B3_x, B4_x], [B3_y, B4_y], color=color_def, linewidth=width_d, linestyle=style_inv)
-    ax.plot([B3_x, D3_x], [B3_y, D3_y], color=color_def, linewidth=width_d, linestyle=style_inv)
+ax.plot([B4_x, B3_x], [B4_y, B3_y], color=color_def, linewidth=width_d, linestyle=style_inv)
 
 # Plot twist
 ax.arrow(U1_x, U1_y, D1_x - U1_x, D1_y - U1_y, color=color_twist,
@@ -207,14 +183,19 @@ ax.arrow(U3_x, U3_y, D3_x - U3_x, D3_y - U3_y, color=color_twist,
 ax.arrow(U4_x, U4_y, D4_x - U4_x, D4_y - U4_y, color=color_twist,
          length_includes_head=True, head_width=head_width,
          head_length=head_length, width=width_t)
-ax.text(U1_x + 6 / 5 * (D1_x - U1_x), U1_y + (D1_y - U1_y) / 2, 'w',
+#ax.text(D1_x + 0 / 5 * (D1_x - U1_x), D1_y + (D1_y - U1_y) / 1, '$u_{max}$',
+#        color=color_twist, fontstyle='italic', ha='left', fontsize=fontsize)
+ax.text(U2_x + (D2_x - U2_x) / 2, U2_y + (D2_y - U2_y) / 4, '$u_{max}$',
         color=color_twist, fontstyle='italic', ha='right', fontsize=fontsize)
-ax.text(U2_x + (D2_x - U2_x) / 2, U2_y + (D2_y - U2_y) / 2, 'w',
-        color=color_twist, fontstyle='italic', ha='right', fontsize=fontsize)
-ax.text(U3_x + (D3_x - U3_x) / 2, U3_y + (D3_y - U3_y) / 2, 'w',
-        color=color_twist, fontstyle='italic', fontsize=fontsize)
-ax.text(U4_x + (D4_x - U4_x) / 2, U4_y + (D4_y - U4_y) / 2, 'w',
-        color=color_twist, fontstyle='italic', va='top', fontsize=fontsize)
+#ax.text(U3_x + (D3_x - U3_x) / 2, U3_y + (D3_y - U3_y) / 2, '$u_{max}$',
+#        color=color_twist, fontstyle='italic', fontsize=fontsize)
+#ax.text(U4_x + (D4_x - U4_x) / 2, U4_y + (D4_y - U4_y) / 2, '$u_{max}$',
+#        color=color_twist, fontstyle='italic', va='top', fontsize=fontsize)
+
+
+
+
+
 
 ### ----- Save figure ----- ###
 name = 'results/rotation.pdf'

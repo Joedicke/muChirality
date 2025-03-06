@@ -1,5 +1,16 @@
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+mpl.rcParams['font.family'] = 'sans-serif'
+mpl.rcParams['font.sans-serif'] = ['Arial']
+mpl.rcParams['font.serif'] = ['Arial']
+mpl.rcParams['font.cursive'] = ['Arial']
+mpl.rcParams['font.size'] = '10'
+mpl.rcParams['legend.fontsize'] = '10'
+mpl.rcParams['xtick.labelsize'] = '9'
+mpl.rcParams['ytick.labelsize'] = '9'
+mpl.rcParams['svg.fonttype'] = 'none'
 
 from torsion_cylinder import plotting
 
