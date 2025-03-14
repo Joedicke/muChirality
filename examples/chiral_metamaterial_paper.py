@@ -71,7 +71,7 @@ def mesh_refinement():
 
     # Discretization
     dim = 3
-    N_list = [16, 20]
+    N_list = [16, 30]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     if MPI.COMM_WORLD.rank == 0:
@@ -102,7 +102,7 @@ def mesh_refinement():
 
     # For saving
     F0 = np.eye(3)
-    folder = 'results_paper/chiral_mesh_refinement/'
+    folder = f'chiral_mesh_refinement_mpi{MPI.COMM_WORLD.size}/'
     name = folder + 'data.txt'
 
     ### ----- Prepare saving ----- ###
@@ -175,10 +175,11 @@ def mesh_refinement():
         force = Reduction(MPI.COMM_WORLD).sum(force) / lengths[2]
 
         # Save result
-        with open(name, 'a') as f:
-            to_save = f'{N}  {force}  {nb_elements_without_vacuum}  '
-            to_save += f'{time() - t2}  {time() - t1}  {twist}'
-            print(to_save, file=f)
+        if (MPI.COMM_WORLD.rank == 0):
+            with open(name, 'a') as f:
+                to_save = f'{N}  {force}  {nb_elements_without_vacuum}  '
+                to_save += f'{time() - t2}  {time() - t1}  {twist}'
+                print(to_save, file=f)
 
 ###################################################################################################
 ###################################################################################################
@@ -195,12 +196,12 @@ def calculation_mult_unit_cells():
     angle_mat = np.pi * 35 / 180
 
     # Nb of unit cells in RVE
-    N_uc = 2
+    N_uc = 1
     N_uc_z_list = [1, 2]
 
     # Discretization
     dim = 3
-    N = 20
+    N = 30
     nb_grid_pts_uc = [N, N, N]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
@@ -235,7 +236,7 @@ def calculation_mult_unit_cells():
 
     # For saving
     F0 = np.eye(3)
-    folder = f'results_paper/chiral__Nuc={N_uc}x{N_uc}xN_uc_z__Nxyz={N}/'
+    folder = f'chiral__Nuc={N_uc}x{N_uc}xN_uc_z__mpi{MPI.COMM_WORLD.size}/'
     name = folder + 'data.txt'
 
     ### ----- Prepare saving ----- ###
@@ -253,7 +254,7 @@ def calculation_mult_unit_cells():
 
         # File  for saving data
         with open(name, 'w') as f:
-            title = 'nb_unit_cells_z_direction    force_z (N)    '
+            title = 'nb_unit_cells_z_direction    nb_grid_pts   force_z (N)    '
             title += 'twist (1/mm)    time (s)'
             print(title, file=f)
 
@@ -297,7 +298,7 @@ def calculation_mult_unit_cells():
                                   verbose, μ.solvers.IsStrainInitialised.No,
                                   µ.StoreNativeStress.No, eigen_class.eigen_strain_func)
         stress = res.stress.reshape(shape, order='F')
-        strain = res.grad.reshape(shape, order='F')
+        strain = res.grad .reshape(shape, order='F')
 
         # Force in z-direction
         hx = lengths[0] / nb_grid_pts[0]
@@ -318,7 +319,7 @@ def calculation_mult_unit_cells():
         # Save force
         if MPI.COMM_WORLD.rank == 0:
             with open(name, 'a') as f:
-                np.savetxt(f, [N_uc_z, force, twist, t3 - t1], newline=' ')
+                np.savetxt(f, [N_uc_z, nb_grid_pts[0], nb_grid_pts[1], nb_grid_pts[2], force, twist, t3 - t1], newline=' ')
                 print('', file=f)
 
         if N_uc_z == 1:
@@ -329,17 +330,17 @@ def calculation_mult_unit_cells():
                     os.makedirs(folder_strain)
             for i_quad in range(cell.nb_quad_pts):
                 name_strain = folder_strain + f'quad_pt_{i_quad}_entry_'
-                save_npy((name_strain + '00.npy'), strain[0, 0, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_strain + '00.npy'), np.ascontiguousarray(strain[0, 0, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '01.npy'), strain[0, 1, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_strain + '01.npy'), np.ascontiguousarray(strain[0, 1, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '02.npy'), strain[0, 2, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_strain + '02.npy'), np.ascontiguousarray(strain[0, 2, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '11.npy'), strain[1, 1, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_strain + '11.npy'), np.ascontiguousarray(strain[1, 1, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '12.npy'), strain[1, 2, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_strain + '12.npy'), np.ascontiguousarray(strain[1, 2, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '22.npy'), strain[2, 2, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_strain + '22.npy'), np.ascontiguousarray(strain[2, 2, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
 
             # Save stress
@@ -349,17 +350,17 @@ def calculation_mult_unit_cells():
                     os.makedirs(folder_stress)
             for i_quad in range(cell.nb_quad_pts):
                 name_stress = folder_stress + f'quad_pt_{i_quad}_entry_'
-                save_npy((name_stress + '00.npy'), stress[0, 0, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_stress + '00.npy'), np.ascontiguousarray(stress[0, 0, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '01.npy'), stress[0, 1, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_stress + '01.npy'), np.ascontiguousarray(stress[0, 1, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '02.npy'), stress[0, 2, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_stress + '02.npy'), np.ascontiguousarray(stress[0, 2, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '11.npy'), stress[1, 1, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_stress + '11.npy'), np.ascontiguousarray(stress[1, 1, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '12.npy'), stress[1, 2, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_stress + '12.npy'), np.ascontiguousarray(stress[1, 2, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '22.npy'), stress[2, 2, i_quad], tuple(cell.subdomain_locations),
+                save_npy((name_stress + '22.npy'), np.ascontiguousarray(stress[2, 2, i_quad]), tuple(cell.subdomain_locations),
                          tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
 
             if (MPI.COMM_WORLD.rank == 0):
@@ -385,7 +386,7 @@ def calculation_with_cylinder():
     N_uc_list = [1, 2]
 
     # Discretization
-    Nxyz = 20
+    Nxyz = 30
     nb_grid_pts_uc = [Nxyz, Nxyz, Nxyz]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
@@ -410,7 +411,7 @@ def calculation_with_cylinder():
     fft = 'mpi'
 
     # For saving
-    folder = f'results_paper/chiral_comp_cylinder_Nxyz={Nxyz}/'
+    folder = f'chiral_comp_cylinder_mpi{MPI.COMM_WORLD.size}/'
     name = folder + 'data.txt'
     # F0 = np.eye(3)
 
@@ -571,5 +572,5 @@ def calculation_with_cylinder():
 
 if __name__ == "__main__":
     mesh_refinement()
-    calculation_mult_unit_cells()
-    calculation_with_cylinder()
+    #calculation_mult_unit_cells()
+    #calculation_with_cylinder()
