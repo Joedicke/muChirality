@@ -683,6 +683,42 @@ def plot_on_paper_results(folder):
     plt.close(fig)
 
 
+def plot_convergences():
+    # Read data
+    mpi_size = 60
+    folder = f'results_nemo/chiral_mesh_refinement_mpi{mpi_size}/'
+    data = np.loadtxt((folder + 'data.txt'), skiprows=1)
+    title = f'Mesh refinement: 1x1x1 UC' #{mpi_size} processes'
+
+    N = data[:, 0]
+
+    # Plot convergence average force
+    fig, ax = plt.subplots()
+    fig.suptitle(title)
+    ax.set_xlabel('nb_grid_pts')
+    ax.set_ylabel('Average force (N)')
+    ax.plot(N, data[:, 1], label=f'MPI_size={mpi_size}', marker='x')
+
+    name = folder + 'convergence_force.pdf'
+    fig.savefig(name, bbox_inches='tight')
+    plt.show()
+    plt.close(fig)
+
+    # Plot calculation time
+    fig, ax = plt.subplots()
+    fig.suptitle(title)
+    ax.set_xlabel('nb_grid_pts')
+    ax.set_ylabel('Calculation time (min)')
+    time = data[:, 3] / 60
+    ax.plot(N, time, label=f'MPI_size={mpi_size}', marker='x')
+
+    name = folder + 'calculation_time.pdf'
+    fig.savefig(name, bbox_inches='tight')
+    plt.show()
+    plt.close(fig)
+
+
 if __name__ == "__main__":
-    plots_2D_mult_unit_cells()
+    # plots_2D_mult_unit_cells()
+    plot_convergences()
 

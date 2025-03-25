@@ -631,9 +631,227 @@ def calculation_with_cylinder():
     if MPI.COMM_WORLD.rank == 0:
         plot_comp_cylinder(folder)
 
+def check_geometries():
+    ### ----- Parameter definitions ----- ###
+    # Geometry
+    a = 1
+    thickness = 0.06
+    radius_out = 0.4
+    radius_inn = radius_out - thickness
+    angle_mat = np.pi * 35 / 180
+    lengths_cyl = [1, 1, a]
+    N_uc = [2, 2, 3]
+
+    # Discretization
+    Nxyz = 30
+    nb_grid_pts = [Nxyz, Nxyz, Nxyz]
+
+    helper_title = f'{N_uc[0]}x{N_uc[1]}x{N_uc[2]} unit cells: '
+
+    ### ----- Define geometries ----- ###
+    # Original geometry (one unit cell)
+    mask, lengths =\
+        geo.chiral_metamaterial_2(nb_grid_pts, a, radius_out,
+                                  radius_inn, thickness,
+                                  alpha=angle_mat)
+    x = np.linspace(0, lengths[0], nb_grid_pts[0]+1, endpoint=True)
+    y = np.linspace(0, lengths[1], nb_grid_pts[1]+1, endpoint=True)
+    z = np.linspace(0, lengths[2], nb_grid_pts[2]+1, endpoint=True)
+
+    # Mirrored geometry (one unit cell)
+    mask_mir, lengths_mir =\
+        geo.chiral_metamaterial_2_mirrored(nb_grid_pts, a, radius_out,
+                                           radius_inn, thickness,
+                                           alpha=angle_mat)
+    x_mir = np.linspace(0, lengths_mir[0], nb_grid_pts[0]+1, endpoint=True)
+    y_mir = np.linspace(0, lengths_mir[1], nb_grid_pts[1]+1, endpoint=True)
+    z_mir = np.linspace(0, lengths_mir[2], nb_grid_pts[2]+1, endpoint=True)
+
+    # Original geometry (1x1x1 unit cells)
+    mask_1x1x1, lengths_1x1x1 =\
+        geo.chiral_2_mult_unit_cell([1, 1, 1], nb_grid_pts, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
+    x_1x1x1 = np.linspace(0, lengths_1x1x1[0], nb_grid_pts[0]+1, endpoint=True)
+    y_1x1x1 = np.linspace(0, lengths_1x1x1[1], nb_grid_pts[1]+1, endpoint=True)
+    z_1x1x1 = np.linspace(0, lengths_1x1x1[2], nb_grid_pts[2]+1, endpoint=True)
+
+    # Mirrored geometry (1x1x1 unit cells)
+    mask_1x1x1_mir, lengths_1x1x1_mir =\
+        geo.chiral_2_mult_unit_cell_mirrored([1, 1, 1], nb_grid_pts, a,
+                                             radius_out, radius_inn,
+                                             thickness, alpha=angle_mat)
+    x_1x1x1_mir = np.linspace(0, lengths_1x1x1_mir[0], nb_grid_pts[0]+1, endpoint=True)
+    y_1x1x1_mir = np.linspace(0, lengths_1x1x1_mir[1], nb_grid_pts[1]+1, endpoint=True)
+    z_1x1x1_mir = np.linspace(0, lengths_1x1x1_mir[2], nb_grid_pts[2]+1, endpoint=True)
+
+    # Original geometry (N_uc unit cells)
+    mask_mult, lengths_mult =\
+        geo.chiral_2_mult_unit_cell(N_uc, nb_grid_pts, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
+    nb_grid_pts_mult = mask_mult.shape
+    x_mult = np.linspace(0, lengths_mult[0], nb_grid_pts_mult[0]+1, endpoint=True)
+    y_mult = np.linspace(0, lengths_mult[1], nb_grid_pts_mult[1]+1, endpoint=True)
+    z_mult = np.linspace(0, lengths_mult[2], nb_grid_pts_mult[2]+1, endpoint=True)
+
+    # Mirrored geometry (N_uc unit cells)
+    mask_mult_mir, lengths_mult_mir =\
+        geo.chiral_2_mult_unit_cell_mirrored(N_uc, nb_grid_pts, a,
+                                             radius_out, radius_inn,
+                                             thickness, alpha=angle_mat)
+    nb_grid_pts_mult = mask_mult_mir.shape
+    x_mult_mir = np.linspace(0, lengths_mult_mir[0], nb_grid_pts_mult[0]+1, endpoint=True)
+    y_mult_mir = np.linspace(0, lengths_mult_mir[1], nb_grid_pts_mult[1]+1, endpoint=True)
+    z_mult_mir = np.linspace(0, lengths_mult_mir[2], nb_grid_pts_mult[2]+1, endpoint=True)
+
+    ### ----- Plots: helper functions ----- ###
+    def prepare_figure_2x2(title):
+        fig, axes = plt.subplots(2, 2, figsize=(6, 6))
+        fig.suptitle(title)
+        axes[0, 0].set_title('Original (one unit cell)')
+        axes[0, 1].set_title('Mirrored (one unit cell)')
+        axes[1, 0].set_title('Original (mult unit cells)')
+        axes[1, 1].set_title('Mirrored (mult unit cells)')
+        axes[0, 0].set_aspect('equal')
+        axes[0, 1].set_aspect('equal')
+        axes[1, 0].set_aspect('equal')
+        axes[1, 1].set_aspect('equal')
+        return fig, axes
+
+    def prepare_figure_1x2(title):
+        fig, axes = plt.subplots(1, 2, figsize=(7, 4))
+        fig.suptitle(title)
+        axes[0].set_title('Original')
+        axes[1].set_title('Mirrored')
+        axes[0].set_aspect('equal')
+        axes[1].set_aspect('equal')
+        return fig, axes
+
+    ### ----- Plot xy-plane (bottom) ----- ###
+    i = 0
+    # Only for checking pcolormesh
+    #mask[0, Nxyz//2, i] = mask_mir[0, Nxyz//2, i] = 0.5
+    #mask_1x1x1[0, Nxyz//2, i] = mask_1x1x1_mir[0, Nxyz//2, i] = 0.5
+
+    title = f'One unit cell: xy-plane (i_z={i})'
+    fig_one, axes = prepare_figure_2x2(title)
+    axes[0, 0].pcolormesh(x, y, mask[:, :, i].T, shading='flat')
+    axes[0, 1].pcolormesh(x_mir, y_mir, mask_mir[:, :, i].T, shading='flat')
+    axes[1, 0].pcolormesh(x_1x1x1, y_1x1x1, mask_1x1x1[:, :, i].T, shading='flat')
+    axes[1, 1].pcolormesh(x_1x1x1_mir, y_1x1x1_mir, mask_1x1x1_mir[:, :, i].T, shading='flat')
+
+    title = helper_title + f'xy-plane (i_z={i})'
+    fig_mult, axes = prepare_figure_1x2(title)
+    axes[0].pcolormesh(x_mult, y_mult, mask_mult[:, :, i].T, shading='flat')
+    axes[1].pcolormesh(x_mult_mir, y_mult_mir, mask_mult_mir[:, :, i].T, shading='flat')
+
+    #plt.show()
+    plt.close(fig_one)
+    plt.close(fig_mult)
+
+    ### ------ Plot xy-plane (top) ----- ###
+    i = -1
+
+    title = f'One unit cell: xy-plane (i_z={i})'
+    fig_one, axes = prepare_figure_2x2(title)
+    axes[0, 0].pcolormesh(x, y, mask[:, :, i].T, shading='flat')
+    axes[0, 1].pcolormesh(x_mir, y_mir, mask_mir[:, :, i].T, shading='flat')
+    axes[1, 0].pcolormesh(x_1x1x1, y_1x1x1, mask_1x1x1[:, :, i].T, shading='flat')
+    axes[1, 1].pcolormesh(x_1x1x1_mir, y_1x1x1_mir, mask_1x1x1_mir[:, :, i].T, shading='flat')
+
+    title = helper_title + f'xy-plane (i_z={i})'
+    fig_mult, axes = prepare_figure_1x2(title)
+    axes[0].pcolormesh(x_mult, y_mult, mask_mult[:, :, i].T, shading='flat')
+    axes[1].pcolormesh(x_mult_mir, y_mult_mir, mask_mult_mir[:, :, i].T, shading='flat')
+
+    #plt.show()
+    plt.close(fig_one)
+    plt.close(fig_mult)
+
+    ### ----- Plot xz-plane (left) ------ ###
+    i = 1
+    # Only for checking pcolormesh
+    #mask[Nxyz//2, i, 0] = mask_mir[Nxyz//2, i, 0] = 0.5
+    #mask_1x1x1[Nxyz//2, i, 0] = mask_1x1x1_mir[Nxyz//2, i, 0] = 0.5
+
+    title = f'One unit cell: xz-plane (i_y={i})'
+    fig_one, axes = prepare_figure_2x2(title)
+    axes[0, 0].pcolormesh(x, z, mask[:, i, :].T, shading='flat')
+    axes[0, 1].pcolormesh(x_mir, z_mir, mask_mir[:, i, :].T, shading='flat')
+    axes[1, 0].pcolormesh(x_1x1x1, z_1x1x1, mask_1x1x1[:, i, :].T, shading='flat')
+    axes[1, 1].pcolormesh(x_1x1x1_mir, z_1x1x1_mir, mask_1x1x1_mir[:, i, :].T, shading='flat')
+
+    title = helper_title + f'xz-plane (i_y={i})'
+    fig_mult, axes = prepare_figure_1x2(title)
+    axes[0].pcolormesh(x_mult, z_mult, mask_mult[:, i, :].T, shading='flat')
+    axes[1].pcolormesh(x_mult_mir, z_mult_mir, mask_mult_mir[:, i, :].T, shading='flat')
+
+    #plt.show()
+    plt.close(fig_one)
+    plt.close(fig_mult)
+
+    ### ----- Plot xz-plane (left) ------ ###
+    i = -2
+
+    title = f'One unit cell: xz-plane (i_y={i})'
+    fig_one, axes = prepare_figure_2x2(title)
+    axes[0, 0].pcolormesh(x, z, mask[:, i, :].T, shading='flat')
+    axes[0, 1].pcolormesh(x_mir, z_mir, mask_mir[:, i, :].T, shading='flat')
+    axes[1, 0].pcolormesh(x_1x1x1, z_1x1x1, mask_1x1x1[:, i, :].T, shading='flat')
+    axes[1, 1].pcolormesh(x_1x1x1_mir, z_1x1x1_mir, mask_1x1x1_mir[:, i, :].T, shading='flat')
+
+    title = helper_title + f'xz-plane (i_y={i})'
+    fig_mult, axes = prepare_figure_1x2(title)
+    axes[0].pcolormesh(x_mult, z_mult, mask_mult[:, i, :].T, shading='flat')
+    axes[1].pcolormesh(x_mult_mir, z_mult_mir, mask_mult_mir[:, i, :].T, shading='flat')
+
+    #plt.show()
+    plt.close(fig_one)
+    plt.close(fig_mult)
+
+    ### ----- Plot yz-plane (left) ------ ###
+    i = 1
+
+    title = f'One unit cell: yz-plane (i_x={i})'
+    fig_one, axes = prepare_figure_2x2(title)
+    axes[0, 0].pcolormesh(y, z, mask[i, :, :].T, shading='flat')
+    axes[0, 1].pcolormesh(y_mir, z_mir, mask_mir[i, :, :].T, shading='flat')
+    axes[1, 0].pcolormesh(y_1x1x1, z_1x1x1, mask_1x1x1[i, :, :].T, shading='flat')
+    axes[1, 1].pcolormesh(y_1x1x1_mir, z_1x1x1_mir, mask_1x1x1_mir[i, :, :].T, shading='flat')
+
+    title = helper_title + f'yz-plane (i_x={i})'
+    fig_mult, axes = prepare_figure_1x2(title)
+    axes[0].pcolormesh(y_mult, z_mult, mask_mult[i, :, :].T, shading='flat')
+    axes[1].pcolormesh(y_mult_mir, z_mult_mir, mask_mult_mir[i, :, :].T, shading='flat')
+
+    #plt.show()
+    plt.close(fig_one)
+    plt.close(fig_mult)
+
+    ### ----- Plot yz-plane (left) ------ ###
+    i = -2
+
+    title = f'One unit cell: yz-plane (i_x={i})'
+    fig_one, axes = prepare_figure_2x2(title)
+    axes[0, 0].pcolormesh(y, z, mask[i, :, :].T, shading='flat')
+    axes[0, 1].pcolormesh(y_mir, z_mir, mask_mir[i, :, :].T, shading='flat')
+    axes[1, 0].pcolormesh(y_1x1x1, z_1x1x1, mask_1x1x1[i, :, :].T, shading='flat')
+    axes[1, 1].pcolormesh(y_1x1x1_mir, z_1x1x1_mir, mask_1x1x1_mir[i, :, :].T, shading='flat')
+
+    title = helper_title + f'yz-plane (i_x={i})'
+    fig_mult, axes = prepare_figure_1x2(title)
+    axes[0].pcolormesh(y_mult, z_mult, mask_mult[i, :, :].T, shading='flat')
+    axes[1].pcolormesh(y_mult_mir, z_mult_mir, mask_mult_mir[i, :, :].T, shading='flat')
+
+    plt.show()
+    plt.close(fig_one)
+    plt.close(fig_mult)
+
 if __name__ == "__main__":
-    calculation_mult_unit_cells()
+    #calculation_mult_unit_cells()
     #calculation_with_cylinder()
     #folder = 'results/results_nemo/chiral2/mult_unit_cells/'
     #folder = folder + 'Nuc_z=1_Nxyz=50_twist=0.05_strain=0.0/'
     #plot_with_paper(folder)
+    check_geometries()
