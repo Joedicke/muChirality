@@ -185,7 +185,7 @@ def test_convergence_traction_worker(create_geometry, N_list, folder, name_geome
 
     # Loading
     delta_eps = np.zeros((3, 3))
-    delta_eps[0, 0] = 0.05
+    delta_eps[2, 2] = 0.05
 
     # Formulation
     formulation = µ.Formulation.small_strain
@@ -207,7 +207,7 @@ def test_convergence_traction_worker(create_geometry, N_list, folder, name_geome
     if (MPI.COMM_WORLD.rank == 0):
         # File  for saving data
         with open(output_data, 'w') as f:
-            title = 'nb_grid_pts_every_direction  average_stress_xx  '
+            title = 'nb_grid_pts_every_direction  average_force_x  '
             title += 'time_calculation (s)'
             print(title, file=f)
         with open(output, 'a') as f:
@@ -250,19 +250,18 @@ def test_convergence_traction_worker(create_geometry, N_list, folder, name_geome
                                   µ.StoreNativeStress.No)
         stress = res.stress.reshape(shape, order='F')
 
-        # Calculate volume average: stress_xx
-        #hx = lengths[0] / nb_grid_pts[0]
-        #hy = lengths[1] / nb_grid_pts[1]
-        #hz = lengths[2] / nb_grid_pts[2]
-        #print(stress[0, 0])
-        stress_av_xx = 1 / 6 * np.sum(stress[0, 0])
-        stress_av_xx += 1 / 6 * np.sum(stress[0, 0, 0])
-        stress_av_xx = Reduction(MPI.COMM_WORLD).sum(stress_av_xx) / N**3
+        # Force in z-direction
+        hx = lengths[0] / nb_grid_pts[0]
+        hy = lengths[1] / nb_grid_pts[1]
+        hz = lengths[2] / nb_grid_pts[2]
+        force_z = hx * hy * hz / 6 * np.sum(stress[2, 2])
+        force_z += hx * hy * hz / 6 * np.sum(stress[2, 2, 0])
+        force_z = Reduction(MPI.COMM_WORLD).sum(force_z) / lengths[2]
 
         # Save result
         if (MPI.COMM_WORLD.rank == 0):
             with open(output_data, 'a') as f:
-                to_save = f'{N}  {stress_av_xx}  {time() - t1}'
+                to_save = f'{N}  {force_z}  {time() - t1}'
                 print(to_save, file=f)
 
 def create_square_beam(nb_grid_pts):
@@ -277,7 +276,7 @@ def create_square_beam(nb_grid_pts):
 def create_cylinder(nb_grid_pts):
     # Parameters
     lengths = [1, 1, 10]
-    radius = 0.45
+    radius = 0.4
 
     # Create discretized geometry
     mask = geo.cylinder(nb_grid_pts, lengths, radius)
@@ -414,5 +413,5 @@ def plot_mesh_refinements():
         plt.close(fig)
 
 if __name__ == "__main__":
-    #test_convergences()
-    plot_mesh_refinements()
+    test_convergences()
+    #plot_mesh_refinements()
