@@ -103,6 +103,40 @@ class EigenStrain:
         """
         hx = self.hx
         hy = self.hy
+        x_rot_axis = self.x_rot_axis
+        y_rot_axis = self.y_rot_axis
+        angle = self.angle
+
+        # Coordinates of voxel
+        x = np.arange(self.nb_grid_pts[0]) * hx # x-coordinate of voxel
+        y = np.arange(self.nb_grid_pts[1]) * hy # y-coordinate of voxel
+
+        # Difference between voxel coordinate and quadrature point
+        # coordinate
+        delta_x = np.array([0.5, 0.25, 0.75, 0.75, 0.25]) * hx
+        delta_y = np.array([0.5, 0.25, 0.75, 0.25, 0.75]) * hy
+
+        # Eigenstrain
+        strain_field[0, 2] -= 0.5 * angle * (y[None, None, :, None] + delta_y[:, None, None, None] - y_rot_axis)
+        strain_field[2, 0] -= 0.5 * angle * (y[None, None, :, None] + delta_y[:, None, None, None] - y_rot_axis)
+        strain_field[1, 2] += 0.5 * angle * (x[None, :, None, None] + delta_x[:, None, None, None] - x_rot_axis)
+        strain_field[2, 1] += 0.5 * angle * (x[None, :, None, None] + delta_x[:, None, None, None] - x_rot_axis)
+
+    def eigen_strain_func_old(self, step_nb, strain_field):
+        """
+        Change the strain_field to account for the eigen strain.
+        Note: Saves the complete position fields for all quad points and voxels.
+        Therefore, it is not memory-efficient
+
+        Parameters
+        ----------
+        step_nb: int
+                 Number of load step
+        strain_field: np.array(3, 3, 5, *nb_grid_pts) of floats
+                      Strain field
+        """
+        hx = self.hx
+        hy = self.hy
         x = np.arange(self.nb_grid_pts[0]) * hx # x-coordinate of voxel
         y = np.arange(self.nb_grid_pts[1]) * hy # y-coordinate of voxel
         x_rot_axis = self.x_rot_axis

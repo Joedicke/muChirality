@@ -6,9 +6,9 @@ import sys
 import os
 
 # Default path of the library
-sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/libmufft/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "./muspectre/build/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmufft/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/python"))
 
 import numpy as np
 
@@ -53,7 +53,8 @@ def test_eigen_strain():
                               x_torsion, y_torsion)
 
     ### ----- Test eigen strain ----- ###
-    strain = np.random.random((3, 3, cell.nb_quad_pts, *nb_grid_pts))
+    rng = np.random.default_rng(14210451135)
+    strain = rng.random((3, 3, cell.nb_quad_pts, *nb_grid_pts))
     strain_new = strain.copy()
     eigen_class.eigen_strain_func(0, strain_new)
 
@@ -86,6 +87,8 @@ def test_eigen_strain():
     diff = diff - strain[:, :, 1, ind_x, ind_y, ind_z] - strain_twist
     diff = np.linalg.norm(diff)
     assert diff < 1e-10
+
+    print('Finished test_eigen_strain')
 
 def test_remove_eigen_strain():
     """ Test wether the eigen strain can be correctly removed.
@@ -136,3 +139,7 @@ def test_remove_eigen_strain():
     eigen_class.remove_eigen_strain_func(strain_new)
     diff = np.linalg.norm(strain - strain_new)
     assert(diff < 1e-10)
+
+if __name__ == "__main__":
+    test_eigen_strain()
+    test_remove_eigen_strain()
