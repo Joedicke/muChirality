@@ -684,38 +684,51 @@ def plot_on_paper_results(folder):
 
 
 def plot_convergences():
-    # Read data
-    mpi_size = 60
-    folder = f'results_nemo/chiral_mesh_refinement_mpi{mpi_size}/'
-    data = np.loadtxt((folder + 'data.txt'), skiprows=1)
-    title = f'Mesh refinement: 1x1x1 UC' #{mpi_size} processes'
+    # Parameters
+    mpi_size_list = [378, 630, 1260]
+    folder = 'results_nemo/chiral_mesh_refinement_mpi'
 
-    N = data[:, 0]
+    # Prepare figures
+    fig_force, ax_force = plt.subplots()
+    title = f'Mesh refinement: 1x1x1 UC'
+    fig_force.suptitle(title)
+    ax_force.set_xlabel('nb_grid_pts')
+    ax_force.set_ylabel('Average force (N)')
 
-    # Plot convergence average force
-    fig, ax = plt.subplots()
-    fig.suptitle(title)
-    ax.set_xlabel('nb_grid_pts')
-    ax.set_ylabel('Average force (N)')
-    ax.plot(N, data[:, 1], label=f'MPI_size={mpi_size}', marker='x')
+    fig_time, ax_time = plt.subplots()
+    fig_time.suptitle(title)
+    ax_time.set_xlabel('nb_grid_pts')
+    ax_time.set_ylabel('Calculation time (min)')
 
-    name = folder + 'convergence_force.pdf'
-    fig.savefig(name, bbox_inches='tight')
+    for mpi_size in mpi_size_list:
+        # Read data
+        name = folder + f'{mpi_size}/data.txt'
+        data = np.loadtxt(name, skiprows=1)
+        N = data[:, 0]
+
+        # Sort N (can be necessary if the processes have used different nodes
+        # indices_sorted = np.argsort(N)
+        # What to do with double entries?
+
+        # Plot convergence of average force
+        ax_force.plot(N, data[:, 1], label=f'MPI_size={mpi_size}', marker='x')
+
+        # Plot calculation time
+        time = data[:, 3] / 60
+        ax_time.plot(N, time, label=f'MPI_size={mpi_size}', marker='x')
+
+    # Legends
+    ax_force.legend()
+    ax_time.legend()
+
+    # Save and show
+    name = 'results_nemo/convergence_average_force.pdf'
+    fig_force.savefig(name, bbox_inches='tight')
+    name = 'results_nemo/calculation_time.pdf'
+    fig_time.savefig(name, bbox_inches='tight')
     plt.show()
-    plt.close(fig)
-
-    # Plot calculation time
-    fig, ax = plt.subplots()
-    fig.suptitle(title)
-    ax.set_xlabel('nb_grid_pts')
-    ax.set_ylabel('Calculation time (min)')
-    time = data[:, 3] / 60
-    ax.plot(N, time, label=f'MPI_size={mpi_size}', marker='x')
-
-    name = folder + 'calculation_time.pdf'
-    fig.savefig(name, bbox_inches='tight')
-    plt.show()
-    plt.close(fig)
+    plt.close(fig_force)
+    plt.close(fig_time)
 
 
 if __name__ == "__main__":

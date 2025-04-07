@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_
 
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from time import time
 
 import muSpectre as µ
@@ -791,7 +792,7 @@ def check_geometries():
     plt.close(fig_one)
     plt.close(fig_mult)
 
-    ### ----- Plot xz-plane (left) ------ ###
+    ### ----- Plot xz-plane (right) ------ ###
     i = -2
 
     title = f'One unit cell: xz-plane (i_y={i})'
@@ -810,7 +811,7 @@ def check_geometries():
     plt.close(fig_one)
     plt.close(fig_mult)
 
-    ### ----- Plot yz-plane (left) ------ ###
+    ### ----- Plot yz-plane (front) ------ ###
     i = 1
 
     title = f'One unit cell: yz-plane (i_x={i})'
@@ -829,7 +830,7 @@ def check_geometries():
     plt.close(fig_one)
     plt.close(fig_mult)
 
-    ### ----- Plot yz-plane (left) ------ ###
+    ### ----- Plot yz-plane (back) ------ ###
     i = -2
 
     title = f'One unit cell: yz-plane (i_x={i})'
@@ -848,10 +849,312 @@ def check_geometries():
     plt.close(fig_one)
     plt.close(fig_mult)
 
+def plot_border_of_geometry(ax, nb_grid_pts_xy, X_xy, Y_xy, mask_xy,
+                            linewidth=1., linecolor='black'):
+    """
+    Plot the border of the geometry described by mask.
+
+    Input
+    -----
+    ax: matplotlib.pyplot.ax object
+        Axis on which the border should be plotted.
+    nb_grid_pts_xy: list with two ints
+                    Number of pixels in each direction
+    X_xy: np.array([nb_grid_pts[0]+1, nb_grid_pts[1]+1]) of floats
+          x-coordinate for each node.
+    Y_xy: np.array([nb_grid_pts[0]+1, nb_grid_pts[1]+1]) of floats
+          y-coordinate for each node.
+    mask_xy: np.array(nb_grid_pts) of ints
+             Describes the geometry. 1 corresponds to material, 0 to void.
+    linewidth: float
+               Linewidth of the plotted lines. Default is 1
+    linecolor: string
+               Color of the plotted lines. Must be color recognized by
+               matplotlib. Default is 'black'.
+    """
+    # Plot geometry in the interior of the plot
+    for ix in range(nb_grid_pts_xy[0]-1):
+        for iy in range(nb_grid_pts_xy[1]-1):
+            if mask_xy[ix, iy] != mask_xy[ix+1, iy]:
+                ax.plot([X_xy[ix+1, iy], X_xy[ix+1, iy+1]],
+                        [Y_xy[ix+1, iy], Y_xy[ix+1, iy+1]],
+                        linewidth=linewidth, color=linecolor)
+            if mask_xy[ix, iy] != mask_xy[ix, iy+1]:
+                ax.plot([X_xy[ix, iy+1], X_xy[ix+1, iy+1]],
+                        [Y_xy[ix, iy+1], Y_xy[ix+1, iy+1]],
+                        linewidth=linewidth, color=linecolor)
+
+    # Plot geometry at the borders of the plot
+    for ix in range(nb_grid_pts_xy[0]-1):
+        if mask_xy[ix, -1] != mask_xy[ix+1, -1]:
+            ax.plot([X_xy[ix+1, -2], X_xy[ix+1, -1]],
+                    [Y_xy[ix+1, -2], Y_xy[ix+1, -1]],
+                    linewidth=linewidth, color=linecolor)
+        if mask_xy[ix, 0] == 1:
+            ax.plot([X_xy[ix, 0], X_xy[ix+1, 0]], [Y_xy[ix, 0], Y_xy[ix+1, 0]],
+                    linewidth=linewidth, color=linecolor)
+        if mask_xy[ix, -1] == 1:
+            ax.plot([X_xy[ix, -1], X_xy[ix+1, -1]], [Y_xy[ix, -1], Y_xy[ix+1, -1]],
+                    linewidth=linewidth, color=linecolor)
+    for iy in range(nb_grid_pts_xy[1]-1):
+        if mask_xy[-1, iy] != mask_xy[-1, iy+1]:
+            ax.plot([X_xy[-2, iy+1], X_xy[-1, iy+1]],
+                    [Y_xy[-2, iy+1], Y_xy[-1, iy+1]],
+                    linewidth=linewidth, color=linecolor)
+        if mask_xy[0, iy] == 1:
+            ax.plot([X_xy[0, iy], X_xy[0, iy+1]], [Y_xy[0, iy], Y_xy[0, iy+1]],
+                    linewidth=linewidth, color=linecolor)
+        if mask_xy[-1, iy] == 1:
+            ax.plot([X_xy[-1, iy], X_xy[-1, iy+1]], [Y_xy[-1, iy], Y_xy[-1, iy+1]],
+                    linewidth=linewidth, color=linecolor)
+
+    # Plot geometry at the corners of the plot
+    if mask_xy[-1, 0] == 1:
+        ax.plot([X_xy[-2, 0], X_xy[-1, 0]], [Y_xy[-2, 0], Y_xy[-1, 0]],
+                linewidth=linewidth, color=linecolor)
+    if mask_xy[0, -1] == 1:
+        ax.plot([X_xy[0, -2], X_xy[0, -1]], [Y_xy[0, -2], Y_xy[0, -1]],
+                linewidth=linewidth, color=linecolor)
+    if mask_xy[-1, -1] == 1:
+        ax.plot([X_xy[-2, -1], X_xy[-1, -1]], [Y_xy[-2, -1], Y_xy[-1, -1]],
+                linewidth=linewidth, color=linecolor)
+        ax.plot([X_xy[-1, -2], X_xy[-1, -1]], [Y_xy[-1, -2], Y_xy[-1, -1]],
+                linewidth=linewidth, color=linecolor)
+
+def check_2D_plot():
+    ### ----- Parameter definitions ----- ###
+    # Geometry
+    a = 1
+    thickness = 0.06
+    radius_out = 0.4
+    radius_inn = radius_out - thickness
+    angle_mat = np.pi * 35 / 180
+    N_uc = [2, 2, 3]
+
+    # Discretization
+    Nxyz = 20
+    nb_grid_pts_uc = [Nxyz, Nxyz, Nxyz]
+
+    helper_title = f'{N_uc[0]}x{N_uc[1]}x{N_uc[2]} unit cells: '
+
+    # Plot borders of geometry
+    linewidth = 1.5
+    linecolor = 'red'
+
+    ### ----- Define geometries ----- ###
+    # Original geometry (1x1x1 unit cells)
+    geo_1x1x1, lengths_1x1x1 =\
+        geo.chiral_2_mult_unit_cell([1, 1, 1], nb_grid_pts_uc, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
+    x_1x1x1 = np.linspace(0, lengths_1x1x1[0], nb_grid_pts_uc[0]+1, endpoint=True)
+    y_1x1x1 = np.linspace(0, lengths_1x1x1[1], nb_grid_pts_uc[1]+1, endpoint=True)
+    z_1x1x1 = np.linspace(0, lengths_1x1x1[2], nb_grid_pts_uc[2]+1, endpoint=True)
+
+    # Mirrored geometry (1x1x1 unit cells)
+    geo_1x1x1_mir, lengths_1x1x1_mir =\
+        geo.chiral_2_mult_unit_cell_mirrored([1, 1, 1], nb_grid_pts_uc, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
+    x_1x1x1_mir = np.linspace(0, lengths_1x1x1_mir[0], nb_grid_pts_uc[0]+1, endpoint=True)
+    y_1x1x1_mir = np.linspace(0, lengths_1x1x1_mir[1], nb_grid_pts_uc[1]+1, endpoint=True)
+    z_1x1x1_mir = np.linspace(0, lengths_1x1x1_mir[2], nb_grid_pts_uc[2]+1, endpoint=True)
+
+    # Original geometry (N_uc unit cells)
+    geo_mult, lengths_mult =\
+        geo.chiral_2_mult_unit_cell(N_uc, nb_grid_pts_uc, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
+    nb_grid_pts = geo_mult.shape
+    x_mult = np.linspace(0, lengths_mult[0], nb_grid_pts[0]+1, endpoint=True)
+    y_mult = np.linspace(0, lengths_mult[1], nb_grid_pts[1]+1, endpoint=True)
+    z_mult = np.linspace(0, lengths_mult[2], nb_grid_pts[2]+1, endpoint=True)
+
+    # Mirrored geometry (N_uc unit cells)
+    geo_mult_mir, lengths_mult_mir =\
+        geo.chiral_2_mult_unit_cell_mirrored(N_uc, nb_grid_pts_uc, a,
+                                            radius_out, radius_inn,
+                                            thickness, alpha=angle_mat)
+    nb_grid_pts = geo_mult_mir.shape
+    x_mult_mir = np.linspace(0, lengths_mult_mir[0], nb_grid_pts[0]+1, endpoint=True)
+    y_mult_mir = np.linspace(0, lengths_mult_mir[1], nb_grid_pts[1]+1, endpoint=True)
+    z_mult_mir = np.linspace(0, lengths_mult_mir[2], nb_grid_pts[2]+1, endpoint=True)
+
+    ### ----- Plot voxel data on xz-plane: One unit cell ----- ###
+    # Plot data like stress, strain, material, ...
+    iy = 1 # y-postion of plotted plane
+
+    # Prepare figure
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+    fig.suptitle(f'Plot voxel data (one unit cell)')
+    axes[0].set_title('Original')
+    axes[1].set_title('Mirrored')
+    for i in range(2):
+        axes[i].set_aspect('equal')
+        axes[i].set_xlabel('Position x')
+        axes[i].set_ylabel('Position z')
+        axes[i].set_ylim((-0.01, 1.01))
+
+
+    # Only for checking pcolormesh
+    #geo_1x1x1[Nxyz//2, iy, 0] = geo_1x1x1_mir[Nxyz//2, iy, 0] = 0.5
+
+    # Mask vacuum
+    mask_el = geo_1x1x1[:, iy, :].T
+    mask_el = (mask_el == 0)
+    mask_el_mir = geo_1x1x1_mir[:, iy, :].T
+    mask_el_mir = (mask_el_mir == 0)
+
+    # Plot Geometry
+    X, Z = np.meshgrid(x_1x1x1, z_1x1x1)
+    n = np.ma.masked_array(geo_1x1x1[:, iy, :].T, mask_el)
+    pm = axes[0].pcolormesh(X, Z, n, shading='flat')
+    cbar = fig.colorbar(pm, ax=axes[0])
+    n = np.ma.masked_array(geo_1x1x1_mir[:, iy, :].T, mask_el_mir)
+    pm = axes[1].pcolormesh(x_1x1x1_mir, z_1x1x1_mir, n, shading='flat')
+    cbar = fig.colorbar(pm, ax=axes[1])
+
+    # Plot Border of geometry
+    nb_grid_pts = [nb_grid_pts_uc[0], nb_grid_pts_uc[1]]
+    plot_border_of_geometry(axes[0], nb_grid_pts, X.T, Z.T, geo_1x1x1[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+    X, Z = np.meshgrid(x_1x1x1_mir, z_1x1x1_mir)
+    plot_border_of_geometry(axes[1], nb_grid_pts, X.T, Z.T, geo_1x1x1_mir[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+
+    plt.show()
+    plt.close(fig)
+
+     ### ----- Plot voxel data on xz-plane: Multiple unit cells ----- ###
+    # Plot data like stress, strain, material, ...
+    iy = 1 # y-postion of plotted plane
+
+    # Prepare figure
+    fig, axes = plt.subplots(1, 2, figsize=(8, 4))
+    fig.suptitle(f'Plot voxel data (mult unit cell)')
+    axes[0].set_title('Original')
+    axes[1].set_title('Mirrored')
+    for i in range(2):
+        axes[i].set_aspect('equal')
+        axes[i].set_xlabel('Position x')
+        axes[i].set_ylabel('Position z')
+
+    # Mask vacuum
+    mask_el = geo_mult[:, iy, :].T
+    mask_el = (mask_el == 0)
+    mask_el_mir = geo_mult_mir[:, iy, :].T
+    mask_el_mir = (mask_el_mir == 0)
+
+    # Plot Geometry
+    n = np.ma.masked_array(geo_mult[:, iy, :].T, mask_el)
+    pm = axes[0].pcolormesh(x_mult, z_mult, n, shading='flat')
+    cbar = fig.colorbar(pm, ax=axes[0])
+    n = np.ma.masked_array(geo_mult_mir[:, iy, :].T, mask_el_mir)
+    pm = axes[1].pcolormesh(x_mult_mir, z_mult_mir, n, shading='flat')
+    cbar = fig.colorbar(pm, ax=axes[1])
+
+    # Plot Border of geometry
+    X, Z = np.meshgrid(x_mult_mir, z_mult_mir)
+    nb_grid_pts = [geo_mult.shape[0], geo_mult.shape[2]]
+    plot_border_of_geometry(axes[0], nb_grid_pts, X.T, Z.T, geo_mult[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+    X, Z = np.meshgrid(x_mult_mir, z_mult_mir)
+    plot_border_of_geometry(axes[1], nb_grid_pts, X.T, Z.T, geo_mult_mir[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+
+    #plt.show()
+    plt.close(fig)
+
+    ### ----- Plot node data on xz-plane: One unit cell ----- ###
+    # Plot data like displacement
+    iy = 1 # y-postion of plotted plane
+    Nx = nb_grid_pts_uc[0]
+    Nz = nb_grid_pts_uc[2]
+
+    # Create data
+    data_1 = np.empty((Nx+1, Nz+1))
+    data_1[:-1, :-1] = geo_1x1x1[:, iy, :]
+    for i in range(Nx):
+        if geo_1x1x1[i, iy, -1] == 1:
+            data_1[i, -1] = 1
+        else:
+            data_1[i, -1] = 0
+    for i in range(Nz):
+        if geo_1x1x1[-1, iy, i] == 1:
+            data_1[-1, i] = 1
+        else:
+            data_1[-1, i] = 0
+    if geo_1x1x1[-1, iy, -1] == 1:
+        data_1[-1, -1] = 1
+    else:
+        data_1[-1, -1] = 0
+    data_2 = np.arange((Nx+1) * (Nz+1)).reshape((Nx+1, Nz+1))
+    data_2[-1, Nz//2] = -50
+
+    # Prepare figure
+    fig, axes = plt.subplots(1, 3, figsize=(12, 4))
+    fig.suptitle(f'Plot node data with gouraud shading (one unit cell)')
+    axes[0].set_title('Material')
+    axes[1].set_title('Material (void is masked)')
+    axes[2].set_title('Values (void is masked)')
+    for i in range(3):
+        axes[i].set_aspect('equal')
+        axes[i].set_xlabel('Position x')
+        axes[i].set_ylabel('Position z')
+
+
+    # Plot material (with void)
+    n = data_1.T
+    pm = axes[0].pcolormesh(x_1x1x1, z_1x1x1, n, shading='gouraud')
+    cbar = fig.colorbar(pm, ax=axes[0])
+    X, Z = np.meshgrid(x_1x1x1, z_1x1x1)
+    plot_border_of_geometry(axes[0], [Nx, Nz], X.T, Z.T, geo_1x1x1[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+
+    # Masks to ignore void
+    mask = geo_1x1x1[:, iy, :].T
+    helper = (mask != 1)
+    mask_points = np.full([Nx+1, Nz+1], True)
+    mask_points[:-1, :-1] = helper
+    mask_points[1:, :-1] = np.logical_and(helper, mask_points[1:, :-1])
+    mask_points[:-1, 1:] = np.logical_and(helper, mask_points[:-1, 1:])
+    mask_points[1:, 1:] = np.logical_and(helper, mask_points[1:, 1:])
+
+    # Plot material (while masking void)
+    n = data_1.T # Both valid
+    n = np.ma.masked_array(data_1.T, mask_points) # Both valid
+    pm = axes[1].pcolormesh(x_1x1x1, z_1x1x1, n, shading='gouraud')
+    cbar = fig.colorbar(pm, ax=axes[1])
+    X, Z = np.meshgrid(x_1x1x1, z_1x1x1)
+    plot_border_of_geometry(axes[1], [Nx, Nz], X.T, Z.T, geo_1x1x1[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+    # Note: Due to the gouraud shading, a few elements in corners are not
+    # masked correctly with mask_points. The next line paints these white.
+    # This line is sufficient to make all void elements white, however,
+    # only with mask_points is the automatic colorbar range adjusted.
+    # Either use both masks or adjust colorbar manually.
+    axes[1].pcolormesh(X, Z, np.ma.masked_array(mask, mask),
+                       cmap=mpl.colors.ListedColormap(['white']))
+
+    # Plot values (while masking void)
+    #n = data_2.T # Will result in badly adjusted colorbar
+    n = np.ma.masked_array(data_2.T, mask_points)
+    pm = axes[2].pcolormesh(x_1x1x1, z_1x1x1, n, shading='gouraud')
+    cbar = fig.colorbar(pm, ax=axes[2])
+    X, Z = np.meshgrid(x_1x1x1, z_1x1x1)
+    plot_border_of_geometry(axes[2], [Nx, Nz], X.T, Z.T, geo_1x1x1[:, iy, :],
+                            linewidth=linewidth, linecolor=linecolor)
+    axes[2].pcolormesh(X, Z, np.ma.masked_array(mask, mask),
+                       cmap=mpl.colors.ListedColormap(['white']))
+
+    plt.show()
+    plt.close(fig)
+
 if __name__ == "__main__":
     #calculation_mult_unit_cells()
     #calculation_with_cylinder()
     #folder = 'results/results_nemo/chiral2/mult_unit_cells/'
     #folder = folder + 'Nuc_z=1_Nxyz=50_twist=0.05_strain=0.0/'
     #plot_with_paper(folder)
-    check_geometries()
+    #check_geometries()
+    check_2D_plot()
