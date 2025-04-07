@@ -58,6 +58,8 @@ import muChirality.Geometries as geo
 ###################################################################################################
 def mesh_refinement():
     ### ----- Parameter definitions ----- ###
+    restart = True
+
     # Geometry
     a = 0.5 # in mm
     thickness = 0.06 * a
@@ -71,11 +73,12 @@ def mesh_refinement():
 
     # Discretization
     dim = 3
-    N_list = [16, 30]
+    N_list = [80, 90, 100, 110, 120]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     if MPI.COMM_WORLD.rank == 0:
         print(f'--- Mesh refinement: Parameters ---')
+        print('Restart:', restart)
         print(f'MPI size = {MPI.COMM_WORLD.size}')
         print(f'List of nb_grid_pts:', N_list)
         print(f'nb_unit_cells = {N_uc}x{N_uc}x{N_uc}')
@@ -106,7 +109,7 @@ def mesh_refinement():
     name = folder + 'data.txt'
 
     ### ----- Prepare saving ----- ###
-    if (MPI.COMM_WORLD.rank == 0):
+    if (MPI.COMM_WORLD.rank == 0) and (not restart):
         # Create or clear folder
         if not os.path.exists(folder):
             os.makedirs(folder)
