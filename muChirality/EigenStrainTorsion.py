@@ -121,11 +121,6 @@ class EigenStrain:
 
         # If pfft is used as fft in parallel simulations, the y-dimension is sliced
         y = y[slice_y]
-        #delta_y = delta_y[slice_y]
-
-        print(f'Rank {MPI.COMM_WORLD.rank}: shape of y = {y.shape}')
-        print(f'Rrank {MPI.COMM_WORLD.rank}: shape of delta_y = {delta_y.shape}')
-        print(f'Rrank {MPI.COMM_WORLD.rank}: shape of strain_02 = {strain_field[0, 2].shape}')
 
         # Eigenstrain
         strain_field[0, 2] -= 0.5 * angle * (y[None, None, :, None] + delta_y[:, None, None, None] - y_rot_axis)
@@ -175,9 +170,6 @@ class EigenStrain:
         slice_y = self.slices[1]
         X = X[:, :, slice_y]
         Y = Y[:, :, slice_y]
-
-        print(f'Rank {MPI.COMM_WORLD.rank}: shape of X = {X.shape}')
-        print(f'Rrank {MPI.COMM_WORLD.rank}: shape of strain_21 = {strain_field[1, 2].shape}')
 
         # Eigenstrain
         strain_field[0, 2] -= 0.5 * angle * (Y[:, :, :, None] - y_rot_axis)

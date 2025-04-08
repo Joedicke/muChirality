@@ -74,7 +74,7 @@ def mesh_refinement():
     # Discretization
     dim = 3
     #N_list = [80, 90, 100, 110, 120]
-    N_list = [16]
+    N_list = [16, 20]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     if MPI.COMM_WORLD.rank == 0:
@@ -102,10 +102,7 @@ def mesh_refinement():
     equil_tol        = 1e-7 # tolerance for equilibrium
     maxiter          = 10000
     verbose          = µ.Verbosity.Silent
-    fft = 'mpi' # Parallel fft
-    if MPI.COMM_WORLD.rank == 0:
-        print('fft =', fft)
-        print()
+    fft = 'mpi' # 'pfft' # Parallel fft
 
     # For saving
     F0 = np.eye(3)
@@ -149,8 +146,6 @@ def mesh_refinement():
         cell = µ.Cell(nb_grid_pts, lengths, formulation, gradient,
                       weights=weights, fft=fft, communicator=MPI.COMM_WORLD)
         mask = mask[cell.fft_engine.subdomain_slices]
-        print(f'Rank {MPI.COMM_WORLD.rank}: subdomain_slices = {cell.fft_engine.subdomain_slices}')
-        print(f'Rank {MPI.COMM_WORLD.rank}: Shape of mask = {mask.shape}')
         mat = µ.material.MaterialLinearElastic1_3d.make(cell, "hard", Young, Poisson)
         vac = µ.material.MaterialLinearElastic1_3d.make(cell, "vacuum", 0, 0)
         mask = mask.flatten(order='F')
@@ -298,7 +293,7 @@ def calculation_mult_unit_cells():
         solver = µ.solvers.KrylovSolverCG(cell, cg_tol, maxiter, verbose)
 
         # Initialize Eigen class
-        eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
+        eigen_class = EigenStrain(twist, lengths, nb_grid_pts, cell.fft_engine.subdomain_slices,
                                   lengths[0]/2, lengths[1]/2)
 
         # Solve muSpectre
@@ -476,8 +471,9 @@ def calculation_with_cylinder():
             print(f'Test {i_twist+1} of {len(twists)}')
 
         # Initialize Eigen class
-        eigen_class = EigenStrain(cell.pixels, twist, lengths_cyl, nb_grid_pts_uc,
-                                  x_rot_axis, y_rot_axis)
+        eigen_class = EigenStrain(twist, lengths_cyl, nb_grid_pts,
+                                  cell.fft_engine.subdomain_slices,
+                                  lengths[0]/2, lengths[1]/2)
 
         # Solving
         res = µ.solvers.newton_cg(cell, delta_eps, solver, newton_tol, equil_tol,
@@ -546,7 +542,7 @@ def calculation_with_cylinder():
                 print(f'Test {i_twist+1} of {len(twists)}')
 
             # Initialize Eigen class
-            eigen_class = EigenStrain(cell.pixels, twist, lengths_cyl, nb_grid_pts,
+            eigen_class = EigenStrain(twist, lengths, nb_grid_pts, cell.fft_engine.subdomain_slices,
                                       x_rot_axis, y_rot_axis)
 
             # Solving
@@ -581,5 +577,5 @@ def calculation_with_cylinder():
 
 if __name__ == "__main__":
     mesh_refinement()
-    #calculation_mult_unit_cells()
-    #calculation_with_cylinder()
+    calculation_mult_unit_cells()
+    calculation_with_cylinder()
