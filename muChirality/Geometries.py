@@ -32,6 +32,7 @@ covered by the terms of those libraries' licenses, the licensors of this
 Program grant you additional permission to convey the resulting work.
 """
 import numpy as np
+from NuMPI import MPI
 
 ###################################################################################################
 ##### ---------------------------------- Simple geometries ---------------------------------- #####
@@ -114,11 +115,12 @@ def cylinder(nb_grid_pts, lengths, radius):
     y_axis = lengths[1] / 2
 
     # Check the radius
-    if (radius > lengths[0]/2 - hx) or (radius > lengths[1]/2 - hy):
-        message = 'Attention: The diameter of the cylinder is larger '
-        message += 'then the unit cell. THE PERIODIC BOUNDARIES ARE '
-        message += 'NOT BROKEN.'
-        print(message)
+    if MPI.COMM_WORLD.rank == 0:
+        if (radius > lengths[0]/2 - hx) or (radius > lengths[1]/2 - hy):
+            message = 'Attention: The diameter of the cylinder is larger '
+            message += 'then the unit cell. THE PERIODIC BOUNDARIES ARE '
+            message += 'NOT BROKEN.'
+            print(message)
 
     # x-y-coordinates of the centers of the 5 tetradras
     X, Y = np.meshgrid(x, y)
@@ -169,20 +171,21 @@ def hollow_cylinder(nb_grid_pts, lengths, radius, thickness):
     y_axis = lengths[1] / 2
 
     # Check the parameters
-    if (radius > lengths[0]/2 - hx) or (radius > lengths[1]/2 - hy):
-        message = 'Attention: The diameter of the cylinder is larger '
-        message += 'then the unit cell. THE PERIODIC BOUNDARIES ARE '
-        message += 'NOT BROKEN.'
-        print(message)
-    if (hx > thickness) or (hy > thickness):
-        message = 'Error: The pixels are larger than the thickness '
-        message += 'of the hollow cylinder. Please refine the '
-        message += 'discretization.'
-        assert hx > thickness, message
-        assert hy > thickness, message
-    if (3*hx > thickness) or (3*hy > thickness):
-        message = 'Error: The thickness is represented by less then 3 pixels.'
-        message += ' Please consider refining the discretization.'
+    if MPI.COMM_WORLD.rank == 0:
+        if (radius > lengths[0]/2 - hx) or (radius > lengths[1]/2 - hy):
+            message = 'Attention: The diameter of the cylinder is larger '
+            message += 'then the unit cell. THE PERIODIC BOUNDARIES ARE '
+            message += 'NOT BROKEN.'
+            print(message)
+        if (hx > thickness) or (hy > thickness):
+            message = 'Error: The pixels are larger than the thickness '
+            message += 'of the hollow cylinder. Please refine the '
+            message += 'discretization.'
+            assert hx > thickness, message
+            assert hy > thickness, message
+        if (3*hx > thickness) or (3*hy > thickness):
+            message = 'Error: The thickness is represented by less then 3 pixels.'
+            message += ' Please consider refining the discretization.'
 
     # x-y-coordinates of the centers of the 5 tetradras
     X, Y = np.meshgrid(x, y)
@@ -279,25 +282,26 @@ def chiral_metamaterial(nb_grid_pts, lengths, radius, thickness, alpha=0):
     thickness_z = round(thickness / hz)
 
     # Check wether the parameters are meaningful
-    if (radius > lengths[0]/2 - hx) or (radius > lengths[1]/2 - hy):
-        message = 'Attention: The diameter of the cylinder is larger '
-        message += 'then the unit cell. THE PERIODIC BOUNDARIES ARE '
-        message += 'NOT BROKEN.'
-        print(message)
-    if (radius < thickness + hx) or (radius < thickness + hy):
-        message = 'Error: The radius is too small.'
-        assert radius < thicknss + hx, message
-        assert radius < thickness + hy, message
-    if (hx > thickness) or (hy > thickness) or (hy > thickness):
-        message = 'Error: The pixels are larger than the thickness.'
-        message += ' Please refine the discretization.'
-        assert hx > thickness, message
-        assert hy > thickness, message
-        assert hz > thickness, message
-    if (3*hx > thickness) or (3*hy > thickness):
-        message = 'Attention: The thickness is represented by less then 3 pixels.'
-        message += ' Please consider refining the discretization.'
-        print(message)
+    if MPI.COMM_WORLD.rank == 0:
+        if (radius > lengths[0]/2 - hx) or (radius > lengths[1]/2 - hy):
+            message = 'Attention: The diameter of the cylinder is larger '
+            message += 'then the unit cell. THE PERIODIC BOUNDARIES ARE '
+            message += 'NOT BROKEN.'
+            print(message)
+        if (radius < thickness + hx) or (radius < thickness + hy):
+            message = 'Error: The radius is too small.'
+            assert radius < thicknss + hx, message
+            assert radius < thickness + hy, message
+        if (hx > thickness) or (hy > thickness) or (hy > thickness):
+            message = 'Error: The pixels are larger than the thickness.'
+            message += ' Please refine the discretization.'
+            assert hx > thickness, message
+            assert hy > thickness, message
+            assert hz > thickness, message
+        if (3*hx > thickness) or (3*hy > thickness):
+            message = 'Attention: The thickness is represented by less then 3 pixels.'
+            message += ' Please consider refining the discretization.'
+            print(message)
     helper = np.arctan((radius - thickness / 2) / (lengths[2] - 2 * thickness))
     if (alpha > helper) or (alpha < - helper):
         message = f'Error: The angle must lie between {-helper} and {helper}'
@@ -406,24 +410,25 @@ def chiral_metamaterial_2(nb_grid_pts, a, radius_out, radius_inn,
     b = 1.5 * thickness
 
     # Check wether the parameters are meaningful
-    if (radius_out > a/2 - hx) or (radius_out > a/2 - hy):
-        message = 'ATTENTION: The diameter of the outer circle is larger '
-        message += 'then the unit cell.'
-        print(message)
-    if (radius_inn < thickness + hx) or (radius_inn < thickness + hy):
-        message = 'ERROR: The inner radius is too small.'
-        assert radius_inn < thickness + hx, message
-        assert radius_inn < thickness + hy, message
-    if (hx > thickness) or (hy > thickness) or (hy > thickness):
-        message = 'ERROR: The pixels are larger than the thickness.'
-        message += ' Please refine the discretization.'
-        assert hx > thickness, message
-        assert hy > thickness, message
-        assert hz > thickness, message
-    if (3*hx > thickness) or (3*hy > thickness):
-        message = 'ATTENTION: The thickness is represented by less then 3 pixels.'
-        message += ' Please consider refining the discretization.'
-        print(message)
+    if MPI.COMM_WORLD.rank == 0:
+        if (radius_out > a/2 - hx) or (radius_out > a/2 - hy):
+            message = 'ATTENTION: The diameter of the outer circle is larger '
+            message += 'then the unit cell.'
+            print(message)
+        if (radius_inn < thickness + hx) or (radius_inn < thickness + hy):
+            message = 'ERROR: The inner radius is too small.'
+            assert radius_inn < thickness + hx, message
+            assert radius_inn < thickness + hy, message
+        if (hx > thickness) or (hy > thickness) or (hy > thickness):
+            message = 'ERROR: The pixels are larger than the thickness.'
+            message += ' Please refine the discretization.'
+            assert hx > thickness, message
+            assert hy > thickness, message
+            assert hz > thickness, message
+        if (3*hx > thickness) or (3*hy > thickness):
+            message = 'ATTENTION: The thickness is represented by less then 3 pixels.'
+            message += ' Please consider refining the discretization.'
+            print(message)
 
     ### ----- Define the four corners ----- ###
     mask = np.zeros(nb_grid_pts)
@@ -860,24 +865,25 @@ def chiral_metamaterial_2_mirrored(nb_grid_pts, a, radius_out, radius_inn,
     b = 1.5 * thickness
 
     # Check wether the parameters are meaningful
-    if (radius_out > a/2 - hx) or (radius_out > a/2 - hy):
-        message = 'ATTENTION: The diameter of the outer circle is larger '
-        message += 'then the unit cell.'
-        print(message)
-    if (radius_inn < thickness + hx) or (radius_inn < thickness + hy):
-        message = 'ERROR: The inner radius is too small.'
-        assert radius_inn < thickness + hx, message
-        assert radius_inn < thickness + hy, message
-    if (hx > thickness) or (hy > thickness) or (hy > thickness):
-        message = 'ERROR: The pixels are larger than the thickness.'
-        message += ' Please refine the discretization.'
-        assert hx > thickness, message
-        assert hy > thickness, message
-        assert hz > thickness, message
-    if (3*hx > thickness) or (3*hy > thickness):
-        message = 'ATTENTION: The thickness is represented by less then 3 pixels.'
-        message += ' Please consider refining the discretization.'
-        print(message)
+    if MPI.COMM_WORLD.rank == 0:
+        if (radius_out > a/2 - hx) or (radius_out > a/2 - hy):
+            message = 'ATTENTION: The diameter of the outer circle is larger '
+            message += 'then the unit cell.'
+            print(message)
+        if (radius_inn < thickness + hx) or (radius_inn < thickness + hy):
+            message = 'ERROR: The inner radius is too small.'
+            assert radius_inn < thickness + hx, message
+            assert radius_inn < thickness + hy, message
+        if (hx > thickness) or (hy > thickness) or (hy > thickness):
+            message = 'ERROR: The pixels are larger than the thickness.'
+            message += ' Please refine the discretization.'
+            assert hx > thickness, message
+            assert hy > thickness, message
+            assert hz > thickness, message
+        if (3*hx > thickness) or (3*hy > thickness):
+            message = 'ATTENTION: The thickness is represented by less then 3 pixels.'
+            message += ' Please consider refining the discretization.'
+            print(message)
 
     ### ----- Define the four corners ----- ###
     mask = np.zeros(nb_grid_pts)
