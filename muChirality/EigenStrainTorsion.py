@@ -32,6 +32,7 @@ covered by the terms of those libraries' licenses, the licensors of this
 Program grant you additional permission to convey the resulting work.
 """
 import numpy as np
+from NuMPI import MPI
 
 class EigenStrain:
     """
@@ -62,25 +63,26 @@ class EigenStrain:
     remove_eigen_strain_func(strain_field):
           Inverse of eigen_strain_func.
     """
-    def __init__(self, pixels, angle, lengths, nb_grid_pts, x_rot_axis, y_rot_axis):
+    def __init__(self, angle, lengths, nb_grid_pts, slices, x_rot_axis, y_rot_axis):
         """
         Parameters
         ----------
-        pixels: µSpectre pixels object
-                pixels of the discretized unit cell
         angle: float
                imposed rotation angle
         lengths: List of 3 floats
                  Lengths of the unit cell in cartesian directions
         nb_grid_pts: List of 3 ints
              Number of voxels in cartesian directions
+        slices: List of 3 slices
+                Slices of the subdomain for parallel processes
         x_rot_axis: float
              x-coordinate of the rotation axis
         y_rot_axis: float
              y-coordinate of the rotation axis
         """
         self.nb_grid_pts = nb_grid_pts
-        self.pixels = pixels
+        #self.pixels = pixels
+        self.slices = slices
         self.angle = angle
         self.hx = lengths[0] / nb_grid_pts[0]
         self.hy = lengths[1] / nb_grid_pts[1]
@@ -106,6 +108,7 @@ class EigenStrain:
         x_rot_axis = self.x_rot_axis
         y_rot_axis = self.y_rot_axis
         angle = self.angle
+        slice_y = self.slices[1]
 
         # Coordinates of voxel
         x = np.arange(self.nb_grid_pts[0]) * hx # x-coordinate of voxel
@@ -116,13 +119,21 @@ class EigenStrain:
         delta_x = np.array([0.5, 0.25, 0.75, 0.75, 0.25]) * hx
         delta_y = np.array([0.5, 0.25, 0.75, 0.25, 0.75]) * hy
 
+        # If pfft is used as fft in parallel simulations, the y-dimension is sliced
+        y = y[slice_y]
+        delta_y = delta_y[slice_y]
+
+        print(f'Rank {MPI.COMM_WORLD.rank}: shape of y = {y.shape}')
+        print(f'Rrank {MPI.COMM_WORLD.rank}: shape of delta_y = {delta_y.shape}')
+        print(f'Rrank {MPI.COMM_WORLD.rank}: shape of strain_02 = {strain_field[0, 2].shape}')
+
         # Eigenstrain
         strain_field[0, 2] -= 0.5 * angle * (y[None, None, :, None] + delta_y[:, None, None, None] - y_rot_axis)
         strain_field[2, 0] -= 0.5 * angle * (y[None, None, :, None] + delta_y[:, None, None, None] - y_rot_axis)
         strain_field[1, 2] += 0.5 * angle * (x[None, :, None, None] + delta_x[:, None, None, None] - x_rot_axis)
         strain_field[2, 1] += 0.5 * angle * (x[None, :, None, None] + delta_x[:, None, None, None] - x_rot_axis)
 
-    def eigen_strain_func_old(self, step_nb, strain_field):
+    def eigen_strain_func_2(self, step_nb, strain_field):
         """
         Change the strain_field to account for the eigen strain.
         Note: Saves the complete position fields for all quad points and voxels.
@@ -159,6 +170,14 @@ class EigenStrain:
         Y[2] += 0.75 * hy
         Y[3] += 0.25 * hy
         Y[4] += 0.75 * hy
+
+        # If pfft is used as fft in parallel simulations, the y-dimension is sliced
+        slice_y = self.slices[1]
+        X = X[:, :, slice_y]
+        Y = Y[:, :, slice_y]
+
+        print(f'Rank {MPI.COMM_WORLD.rank}: shape of X = {X.shape}')
+        print(f'Rrank {MPI.COMM_WORLD.rank}: shape of strain_21 = {strain_field[1, 2].shape}')
 
         # Eigenstrain
         strain_field[0, 2] -= 0.5 * angle * (Y[:, :, :, None] - y_rot_axis)

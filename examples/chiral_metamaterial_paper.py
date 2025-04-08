@@ -58,7 +58,7 @@ import muChirality.Geometries as geo
 ###################################################################################################
 def mesh_refinement():
     ### ----- Parameter definitions ----- ###
-    restart = True
+    restart = False
 
     # Geometry
     a = 0.5 # in mm
@@ -73,7 +73,8 @@ def mesh_refinement():
 
     # Discretization
     dim = 3
-    N_list = [80, 90, 100, 110, 120]
+    #N_list = [80, 90, 100, 110, 120]
+    N_list = [16]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     if MPI.COMM_WORLD.rank == 0:
@@ -102,6 +103,9 @@ def mesh_refinement():
     maxiter          = 10000
     verbose          = µ.Verbosity.Silent
     fft = 'mpi' # Parallel fft
+    if MPI.COMM_WORLD.rank == 0:
+        print('fft =', fft)
+        print()
 
     # For saving
     F0 = np.eye(3)
@@ -145,6 +149,8 @@ def mesh_refinement():
         cell = µ.Cell(nb_grid_pts, lengths, formulation, gradient,
                       weights=weights, fft=fft, communicator=MPI.COMM_WORLD)
         mask = mask[cell.fft_engine.subdomain_slices]
+        print(f'Rank {MPI.COMM_WORLD.rank}: subdomain_slices = {cell.fft_engine.subdomain_slices}')
+        print(f'Rank {MPI.COMM_WORLD.rank}: Shape of mask = {mask.shape}')
         mat = µ.material.MaterialLinearElastic1_3d.make(cell, "hard", Young, Poisson)
         vac = µ.material.MaterialLinearElastic1_3d.make(cell, "vacuum", 0, 0)
         mask = mask.flatten(order='F')
@@ -159,7 +165,7 @@ def mesh_refinement():
         solver = µ.solvers.KrylovSolverCG(cell, cg_tol, maxiter, verbose)
 
         # EigenStrain initialization
-        eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
+        eigen_class = EigenStrain(twist, lengths, nb_grid_pts, cell.fft_engine.subdomain_slices,
                                   lengths[0]/2, lengths[1]/2)
 
         # Solve muSpectre
