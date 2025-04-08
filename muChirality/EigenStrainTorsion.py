@@ -121,7 +121,7 @@ class EigenStrain:
 
         # If pfft is used as fft in parallel simulations, the y-dimension is sliced
         y = y[slice_y]
-        delta_y = delta_y[slice_y]
+        #delta_y = delta_y[slice_y]
 
         print(f'Rank {MPI.COMM_WORLD.rank}: shape of y = {y.shape}')
         print(f'Rrank {MPI.COMM_WORLD.rank}: shape of delta_y = {delta_y.shape}')
