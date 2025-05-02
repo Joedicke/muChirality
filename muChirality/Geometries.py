@@ -365,14 +365,14 @@ def chiral_metamaterial(nb_grid_pts, lengths, radius, thickness, alpha=0):
 
 
 ###################################################################################################
-##### -------------------------------- Chiral metamaterial 2 -------------------------------- #####
+##### -------------------------- Chiral metamaterial 2 (Mirrored) --------------------------- #####
 ###################################################################################################
-def chiral_metamaterial_2(nb_grid_pts, a, radius_out, radius_inn,
+def chiral_metamaterial_2_mirrored(nb_grid_pts, a, radius_out, radius_inn,
                                    thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. It consists of a beam on each
     face of the RVE connected to the edges by four beams. The beams are
-    inclined with an angle alpha.
+    inclined with an angle alpha. Mirrored geometry of chiral_metamaterial_2.
 
     Arguments
     ---------
@@ -685,14 +685,15 @@ def chiral_metamaterial_2(nb_grid_pts, a, radius_out, radius_inn,
 
     return mask, lengths
 
-def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
-                            radius_out, radius_inn, thickness, alpha=0):
+def chiral_2_mult_unit_cell_mirrored(nb_unit_cells, nb_grid_pts, a,
+                                     radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
     a beam on each face of the RVE connected to the edges by four beams.
     The beams are inclined with an angle alpha. The metamaterial consists
     of an infinite number of unit cells in z-direction and
     nb_unit_cells unit cells in x- and y-direction.
+    Mirrored geometry of chiral_metamaterial_2.
 
     Arguments
     ---------
@@ -722,9 +723,10 @@ def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
              Lengths of the complete RVE in each direction.
     """
     # One unit cell
-    mask_uc, lengths_uc = chiral_metamaterial_2(nb_grid_pts, a,
-                                                radius_out, radius_inn,
-                                                thickness, alpha=alpha)
+    mask_uc, lengths_uc =\
+        chiral_metamaterial_2_mirrored(nb_grid_pts, a,
+                                       radius_out, radius_inn,
+                                       thickness, alpha=alpha)
 
     # Definition of helper paramaters
     hx = a / (nb_grid_pts[0] - 2) / nb_unit_cells[0]
@@ -759,14 +761,15 @@ def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
 
     return mask, [Lx, Ly, Lz]
 
-def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
-                        radius_out, radius_inn, thickness, alpha=0):
+def chiral_2_with_plate_mirrored(nb_unit_cells, nb_grid_pts, a,
+                                 radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
     a beam on each face of the RVE connected to the edges by four beams.
     The beams are inclined with an angle alpha. The metamaterial consists
     of an infinite number of unit cells in z-direction and
     nb_unit_cells unit cells in x- and y-direction.
+    Mirrored geometry of chiral_metamaterial_2.
 
     Arguments
     ---------
@@ -794,9 +797,9 @@ def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
              Lengths of the complete RVE in each direction.
     """
     # Repeated unit cell
-    mask, lengths = chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
-                                            radius_out, radius_inn,
-                                            thickness, alpha=alpha)
+    mask, lengths = chiral_2_mult_unit_cell_mirrored(nb_unit_cells, nb_grid_pts, a,
+                                                     radius_out, radius_inn,
+                                                     thickness, alpha=alpha)
 
     # Definition of helper paramaters
     hz = lengths[2] / mask.shape[2]
@@ -820,14 +823,14 @@ def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
     return mask, [Lx, Ly, Lz]
 
 ###################################################################################################
-##### -------------------------- Chiral metamaterial 2 (Mirrored) --------------------------- #####
+##### -------------------------------- Chiral metamaterial 2 -------------------------------- #####
 ###################################################################################################
-def chiral_metamaterial_2_mirrored(nb_grid_pts, a, radius_out, radius_inn,
+def chiral_metamaterial_2(nb_grid_pts, a, radius_out, radius_inn,
                                    thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. It consists of a beam on each
     face of the RVE connected to the edges by four beams. The beams are
-    inclined with an angle alpha. Mirrored geometry of chiral_metamaterial_2.
+    inclined with an angle alpha.
 
     Arguments
     ---------
@@ -1141,8 +1144,8 @@ def chiral_metamaterial_2_mirrored(nb_grid_pts, a, radius_out, radius_inn,
 
     return mask, lengths
 
-def chiral_2_mult_unit_cell_mirrored(nb_unit_cells, nb_grid_pts, a,
-                                     radius_out, radius_inn, thickness, alpha=0):
+def chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
+                            radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
     a beam on each face of the RVE connected to the edges by four beams.
@@ -1179,8 +1182,8 @@ def chiral_2_mult_unit_cell_mirrored(nb_unit_cells, nb_grid_pts, a,
     """
     # One unit cell
     mask_uc, lengths_uc =\
-        chiral_metamaterial_2_mirrored(nb_grid_pts, a, radius_out,
-                                       radius_inn, thickness, alpha=alpha)
+        chiral_metamaterial_2(nb_grid_pts, a, radius_out,
+                              radius_inn, thickness, alpha=alpha)
 
     # Definition of helper paramaters
     hx = a / (nb_grid_pts[0] - 2) / nb_unit_cells[0]
@@ -1215,7 +1218,7 @@ def chiral_2_mult_unit_cell_mirrored(nb_unit_cells, nb_grid_pts, a,
 
     return mask, [Lx, Ly, Lz]
 
-def chiral_2_with_plate_mirrored(nb_unit_cells, nb_grid_pts, a,
+def chiral_2_with_plate(nb_unit_cells, nb_grid_pts, a,
                         radius_out, radius_inn, thickness, alpha=0):
     """
     Define a (more complex) chiral metamaterial. Each unit cell consists of
@@ -1251,9 +1254,9 @@ def chiral_2_with_plate_mirrored(nb_unit_cells, nb_grid_pts, a,
     """
     # Repeated unit cell
     mask, lengths =\
-        chiral_2_mult_unit_cell_mirrored(nb_unit_cells, nb_grid_pts, a,
-                                         radius_out, radius_inn,
-                                         thickness, alpha=alpha)
+        chiral_2_mult_unit_cell(nb_unit_cells, nb_grid_pts, a,
+                                radius_out, radius_inn,
+                                thickness, alpha=alpha)
 
     # Definition of helper paramaters
     hz = lengths[2] / mask.shape[2]
