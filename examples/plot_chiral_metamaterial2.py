@@ -685,7 +685,7 @@ def plot_on_paper_results(folder):
 
 def plot_convergences():
     # Parameters
-    mpi_size_list = [378, 630, 1260]
+    mpi_size_list = [126, 190, 630, 950]
     folder = 'results_nemo/chiral_mesh_refinement_mpi'
 
     # Prepare figures
@@ -705,10 +705,6 @@ def plot_convergences():
         name = folder + f'{mpi_size}/data.txt'
         data = np.loadtxt(name, skiprows=1)
         N = data[:, 0]
-
-        # Sort N (can be necessary if the processes have used different nodes
-        # indices_sorted = np.argsort(N)
-        # What to do with double entries?
 
         # Plot convergence of average force
         ax_force.plot(N, data[:, 1], label=f'MPI_size={mpi_size}', marker='x')

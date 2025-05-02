@@ -136,7 +136,8 @@ def test_convergence_rotation_worker(create_geometry, N_list, folder, name_geome
         solver = µ.solvers.KrylovSolverCG(cell, cg_tol, maxiter, verbose)
 
         # EigenStrain initialization
-        eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
+        eigen_class = EigenStrain(twist, lengths, nb_grid_pts,
+                                  cell.fft_engine.subdomain_slices,
                                   lengths[0]/2, lengths[1]/2)
 
         # Solve muSpectre
@@ -391,6 +392,8 @@ def plot_mesh_refinements():
     fontsize_large = 15
 
     ### ----- Plot ----- ###
+    time_all = 0
+    print('Calculation times:')
     for i_load, load in enumerate(loads):
         # Prepare figure
         fig, axes = plt.subplots(2, 2, figsize=figsize, gridspec_kw=gridspec_kw)
@@ -407,11 +410,23 @@ def plot_mesh_refinements():
             # Plot data
             ax.plot(data[:, 0], data[:, 1], marker='x')
 
+            # Calculation time
+            if i_load == 0:
+                calc_time = np.sum(data[:, 2])
+            elif i_load == 1:
+                calc_time = np.sum(data[:, 3])
+            calc_time = calc_time / 60
+            print(f'  {load} {names[i]}: {calc_time:.0f} min')
+            time_all += calc_time
+
         plt.show()
         name = 'convergence_' + load + '.pdf'
         fig.savefig(name, bbox_inches='tight')
         plt.close(fig)
 
+    time_all = time_all / 60
+    print(f'Complete calculation time: {time_all:.1f} h')
+
 if __name__ == "__main__":
-    test_convergences()
-    #plot_mesh_refinements()
+    #test_convergences()
+    plot_mesh_refinements()
