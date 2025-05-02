@@ -44,9 +44,9 @@ import matplotlib.pyplot as plt
 from time import time
 
 import muSpectre as µ
+import muGrid
 from NuMPI import MPI
 from NuMPI.Tools import Reduction
-from NuMPI.IO import save_npy
 
 from muChirality.EigenStrainTorsion import EigenStrain
 from muChirality.CalculationsTorsion import calculations
@@ -56,7 +56,7 @@ import muChirality.Geometries as geo
 ###################################################################################################
 ###################################################################################################
 ###################################################################################################
-def mesh_refinement():
+def mesh_refinement(test_case=False):
     ### ----- Parameter definitions ----- ###
     restart = False
 
@@ -73,8 +73,11 @@ def mesh_refinement():
 
     # Discretization
     dim = 3
-    #N_list = [80, 90, 100, 110, 120]
-    N_list = [16, 20]
+    if test_case:
+        N_list = [16, 30]
+    else:
+        N_list = [60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300,
+                  320, 340, 360, 380, 400, 420, 440, 460, 480, 500]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     if MPI.COMM_WORLD.rank == 0:
@@ -102,11 +105,17 @@ def mesh_refinement():
     equil_tol        = 1e-7 # tolerance for equilibrium
     maxiter          = 10000
     verbose          = µ.Verbosity.Silent
-    fft = 'mpi' # 'pfft' # Parallel fft
+    if MPI.COMM_WORLD.size == 1:
+        fft = 'fftw'
+    else:
+        fft = 'pfft' # Parallel fft
 
     # For saving
     F0 = np.eye(3)
-    folder = f'chiral_mesh_refinement_mpi{MPI.COMM_WORLD.size}/'
+    if test_case:
+        folder = f'results_testing/chiral_mesh_refinement_mpi{MPI.COMM_WORLD.size}/'
+    else:
+        folder = f'chiral_mesh_refinement_mpi{MPI.COMM_WORLD.size}/'
     name = folder + 'data.txt'
 
     ### ----- Prepare saving ----- ###
@@ -125,14 +134,14 @@ def mesh_refinement():
         # File  for saving data
         with open(name, 'w') as f:
             title = 'nb_grid_pts_every_direction  average_force_z (N)  '
-            title += 'nb_elements_without_vacuum  time_calculation (s)  time_with_initialisations (s) twist (1/mm)'
+            title += 'nb_elements_without_vacuum  time_calculation (s)  twist (1/mm)'
+            title += '  angle_per_unit_cell (rad/1)'
             print(title, file=f)
 
     ### ----- Calculation ----- ###
     for index, N in enumerate(N_list):
         if (MPI.COMM_WORLD.rank == 0):
             print(f'Calculation {index + 1} of {len(N_list)}: N={N}')
-        t1 = time()
 
         # Define geometry
         nb_grid_pts_uc = [N, N, N]
@@ -164,7 +173,7 @@ def mesh_refinement():
                                   lengths[0]/2, lengths[1]/2)
 
         # Solve muSpectre
-        t2 = time()
+        t = time()
         res = µ.solvers.newton_cg(cell, delta_eps, solver, newton_tol, equil_tol,
                                   verbose, μ.solvers.IsStrainInitialised.No,
                                   µ.StoreNativeStress.No, eigen_class.eigen_strain_func)
@@ -178,17 +187,20 @@ def mesh_refinement():
         force += hx * hy * hz / 6 * np.sum(stress[2, 2, 0])
         force = Reduction(MPI.COMM_WORLD).sum(force) / lengths[2]
 
+        # Angle per unit cell
+        angle_per_uc = np.arctan(twist * lengths[2] / nb_unit_cells[2])
+
         # Save result
         if (MPI.COMM_WORLD.rank == 0):
             with open(name, 'a') as f:
                 to_save = f'{N}  {force}  {nb_elements_without_vacuum}  '
-                to_save += f'{time() - t2}  {time() - t1}  {twist}'
+                to_save += f'{time() - t}  {twist}  {angle_per_uc}'
                 print(to_save, file=f)
 
 ###################################################################################################
 ###################################################################################################
 ###################################################################################################
-def calculation_mult_unit_cells():
+def calculation_mult_unit_cells(test_case=False, N_uc=1):
     ### ----- Parameter definitions ----- ###
     t = time()
 
@@ -200,12 +212,18 @@ def calculation_mult_unit_cells():
     angle_mat = np.pi * 35 / 180
 
     # Nb of unit cells in RVE
-    N_uc = 1
-    N_uc_z_list = [1, 2]
+    if test_case:
+        N_uc = 1
+        N_uc_z_list = [1, 2]
+    else:
+        N_uc_z_list = [1, 2, 3, 4]
 
     # Discretization
     dim = 3
-    N = 30
+    if test_case:
+        N = 30
+    else:
+        N = 100
     nb_grid_pts_uc = [N, N, N]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
@@ -236,11 +254,17 @@ def calculation_mult_unit_cells():
     equil_tol        = 1e-7 # tolerance for equilibrium
     maxiter          = 10000
     verbose          = µ.Verbosity.Silent
-    fft = 'mpi' # Parallel fft
+    if MPI.COMM_WORLD.size == 1:
+        fft = 'fftw'
+    else:
+        fft = 'pfft'
 
     # For saving
     F0 = np.eye(3)
-    folder = f'chiral__Nuc={N_uc}x{N_uc}xN_uc_z__mpi{MPI.COMM_WORLD.size}/'
+    if test_case:
+        folder = 'results_testing/' + f'chiral_Nuc={N_uc}x{N_uc}xNucz_mpi{MPI.COMM_WORLD.size}/'
+    else:
+        folder = f'chiral_Nuc={N_uc}x{N_uc}xNucz_mpi{MPI.COMM_WORLD.size}/'
     name = folder + 'data.txt'
 
     ### ----- Prepare saving ----- ###
@@ -259,7 +283,7 @@ def calculation_mult_unit_cells():
         # File  for saving data
         with open(name, 'w') as f:
             title = 'nb_unit_cells_z_direction    nb_grid_pts   force_z (N)    '
-            title += 'twist (1/mm)    time (s)'
+            title += 'twist (1/mm)    angle_per_unit_cell (rad/1)   time (s)'
             print(title, file=f)
 
     ### ----- Calculation ----- ###
@@ -302,7 +326,7 @@ def calculation_mult_unit_cells():
                                   verbose, μ.solvers.IsStrainInitialised.No,
                                   µ.StoreNativeStress.No, eigen_class.eigen_strain_func)
         stress = res.stress.reshape(shape, order='F')
-        strain = res.grad .reshape(shape, order='F')
+        strain = res.grad.reshape(shape, order='F')
 
         # Force in z-direction
         hx = lengths[0] / nb_grid_pts[0]
@@ -314,58 +338,64 @@ def calculation_mult_unit_cells():
 
         t3 = time()
 
+        # Calculate fluctuating displacement
+        if N_uc_z == 1:
+            strain_no_eigen = strain.copy()
+            eigen_class.remove_eigen_strain_func(strain_no_eigen)
+            displ = get_complemented_positions("d", cell, strain_array=strain_no_eigen,
+                                               F0=F0, periodically_complemented=False)
+
         ### ----- Save results ----- ###
         if MPI.COMM_WORLD.rank == 0:
             print(f'Finished calculation {index+1} of {len(N_uc_z_list)}')
             t = (t3 - t1) / 60
             print(f'Time for calculation = {t:.2} min')
 
+        # Angle per unit cell
+        angle_per_uc = np.arctan(twist * lengths[2] / nb_unit_cells[2])
+
         # Save force
         if MPI.COMM_WORLD.rank == 0:
             with open(name, 'a') as f:
-                np.savetxt(f, [N_uc_z, nb_grid_pts[0], nb_grid_pts[1], nb_grid_pts[2], force, twist, t3 - t1], newline=' ')
+                np.savetxt(f, [N_uc_z, nb_grid_pts[0], nb_grid_pts[1], nb_grid_pts[2],
+                               force, twist, angle_per_uc, t3 - t1], newline=' ')
                 print('', file=f)
 
         if N_uc_z == 1:
-            # Save strain
-            folder_strain = folder + f'N_uc_z=1__strains/'
-            if (MPI.COMM_WORLD.rank == 0):
-                if not os.path.exists(folder_strain):
-                    os.makedirs(folder_strain)
-            for i_quad in range(cell.nb_quad_pts):
-                name_strain = folder_strain + f'quad_pt_{i_quad}_entry_'
-                save_npy((name_strain + '00.npy'), np.ascontiguousarray(strain[0, 0, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '01.npy'), np.ascontiguousarray(strain[0, 1, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '02.npy'), np.ascontiguousarray(strain[0, 2, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '11.npy'), np.ascontiguousarray(strain[1, 1, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '12.npy'), np.ascontiguousarray(strain[1, 2, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_strain + '22.npy'), np.ascontiguousarray(strain[2, 2, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            comm = muGrid.Communicator(MPI.COMM_WORLD)
+            # Create file io object for saving stress and strain
+            name_3D = folder + f'data_3D_Nucz=1.nc'
+            if os.path.exists(name_3D):
+                if comm.rank == 0:
+                    os.remove(name_3D)
+            MPI.COMM_WORLD.Barrier() # wait for rank 0 to delete the old netcdf file
+            file_io_object = muGrid.FileIONetCDF(
+                name_3D, muGrid.FileIONetCDF.OpenMode.Write, comm)
 
-            # Save stress
-            folder_stress = folder + f'N_uc_z=1__stress/'
-            if (MPI.COMM_WORLD.rank == 0):
-                if not os.path.exists(folder_stress):
-                    os.makedirs(folder_stress)
-            for i_quad in range(cell.nb_quad_pts):
-                name_stress = folder_stress + f'quad_pt_{i_quad}_entry_'
-                save_npy((name_stress + '00.npy'), np.ascontiguousarray(stress[0, 0, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '01.npy'), np.ascontiguousarray(stress[0, 1, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '02.npy'), np.ascontiguousarray(stress[0, 2, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '11.npy'), np.ascontiguousarray(stress[1, 1, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '12.npy'), np.ascontiguousarray(stress[1, 2, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '22.npy'), np.ascontiguousarray(stress[2, 2, i_quad]), tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            # Register field for saving displacements
+            fields = cell.get_field_collection()
+            fields.register_real_field('fluctuating_displacement', nb_components=3, sub_division='pixel')
+            fluct_displ = fields.get_field('fluctuating_displacement').array()
+            fluct_displ[:] = displ[:, None, :, :, :]
+
+            # Register field for saving total strain
+            fields.register_real_field('strain_total', components_shape=[3, 3], sub_division='quad_point')
+            helper = fields.get_field('strain_total').array()
+            helper[:] = strain
+
+
+            # Register global fields of the cell which you want to write
+            file_io_object.register_field_collection(
+                field_collection=fields,
+                field_names=["strain", "stress", "strain_total",
+                             "fluctuating_displacement"])
+
+            # Write values
+            file_io_object.append_frame().write(["stress"])
+            file_io_object.append_frame().write(["strain"]) # Note: This is the fluctuating strain
+            file_io_object.append_frame().write(["strain_total"]) # Note: This is the complete strain
+            file_io_object.append_frame().write(["fluctuating_displacement"])
+            file_io_object.close()
 
             if (MPI.COMM_WORLD.rank == 0):
                 t = (time() - t3) / 60
@@ -375,7 +405,7 @@ def calculation_mult_unit_cells():
 ###################################################################################################
 ###################################################################################################
 ###################################################################################################
-def calculation_with_cylinder():
+def calculation_with_cylinder(test_case=False):
     t = time()
     ### ----- Parameter definitions ----- ###
     # Geometry
@@ -387,10 +417,16 @@ def calculation_with_cylinder():
     lengths_cyl = [1, 1, a]
     dim = 3
 
-    N_uc_list = [1, 2]
+    if test_case:
+        N_uc_list = [1, 2]
+    else:
+        N_uc_list = [1, 3]
 
     # Discretization
-    Nxyz = 30
+    if test_case:
+        Nxyz = 30
+    else:
+        Nxyz = 100
     nb_grid_pts_uc = [Nxyz, Nxyz, Nxyz]
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
@@ -399,8 +435,10 @@ def calculation_with_cylinder():
     Poisson = 0
 
     # Loading
-    #twists = [-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2]
-    twists = [-0.1, 0.1, 0.2]
+    if test_case:
+        twists = np.array([-0.1, 0.1, 0.2])
+    else:
+        twists = np.array([-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2])
     delta_eps = np.zeros((3, 3))
 
     # Formulation
@@ -412,12 +450,16 @@ def calculation_with_cylinder():
     equil_tol        = 1e-7 # tolerance for equilibrium
     maxiter          = 10000
     verbose          = µ.Verbosity.Silent
-    fft = 'mpi'
+    if MPI.COMM_WORLD.size == 1:
+        fft = 'fftw'
+    else:
+        fft = 'pfft'
 
     # For saving
     folder = f'chiral_comp_cylinder_mpi{MPI.COMM_WORLD.size}/'
+    if test_case:
+        folder = 'results_testing/' + folder
     name = folder + 'data.txt'
-    # F0 = np.eye(3)
 
     ### ----- Prepare saving ----- ###
     if (MPI.COMM_WORLD.rank == 0):
@@ -471,9 +513,9 @@ def calculation_with_cylinder():
             print(f'Test {i_twist+1} of {len(twists)}')
 
         # Initialize Eigen class
-        eigen_class = EigenStrain(twist, lengths_cyl, nb_grid_pts,
+        eigen_class = EigenStrain(twist, lengths_cyl, nb_grid_pts_uc,
                                   cell.fft_engine.subdomain_slices,
-                                  lengths[0]/2, lengths[1]/2)
+                                  x_rot_axis, y_rot_axis)
 
         # Solving
         res = µ.solvers.newton_cg(cell, delta_eps, solver, newton_tol, equil_tol,
@@ -489,9 +531,13 @@ def calculation_with_cylinder():
         forces[i_twist] = force
 
     # Save results
+    angle_per_uc = np.arctan(twists * lengths_cyl[2])
     if MPI.COMM_WORLD.rank == 0:
         with open(name, 'a') as f:
-            print('Force in z-direction: Cylinder (N)', file=f)
+            print(f'Rotation angle per unit cell (rad/1): Cylinder', file=f)
+            np.savetxt(f, angle_per_uc, newline=' ')
+            print('', file=f)
+            print('Force in z-direction (N): Cylinder', file=f)
             np.savetxt(f, forces, newline=' ')
             print('', file=f)
 
@@ -523,7 +569,7 @@ def calculation_with_cylinder():
         y_rot_axis = lengths[1] / 2
 
         # muSpectre cell initialization
-        cell = µ.Cell(nb_grid_pts, lengths_cyl, formulation, gradient,
+        cell = µ.Cell(nb_grid_pts, lengths, formulation, gradient,
                       weights=weights, fft=fft, communicator=MPI.COMM_WORLD)
         mask = mask[cell.fft_engine.subdomain_slices]
         mat = µ.material.MaterialLinearElastic1_3d.make(cell, "hard", Young, Poisson)
@@ -558,10 +604,16 @@ def calculation_with_cylinder():
             force = Reduction(MPI.COMM_WORLD).sum(force) / lengths[2]
             forces[i_twist] = force
 
+        # Rotation angle per unit cell
+        angle_per_uc = np.arctan(twists * lengths[2])
+
         # Save results
         if MPI.COMM_WORLD.rank == 0:
             with open(name, 'a') as f:
-                print(f'Force in z-direction: Metamaterial with {N_uc}x{N_uc}x1 unit cells (N)', file=f)
+                print(f'Rotation angle per unit cell (rad/1): Metamaterial with {N_uc}x{N_uc}x1 unit cells', file=f)
+                np.savetxt(f, angle_per_uc, newline=' ')
+                print('', file=f)
+                print(f'Force in z-direction (N): Metamaterial with {N_uc}x{N_uc}x1 unit cells', file=f)
                 np.savetxt(f, forces, newline=' ')
                 print('', file=f)
 
@@ -576,6 +628,10 @@ def calculation_with_cylinder():
         del stress
 
 if __name__ == "__main__":
-    mesh_refinement()
-    calculation_mult_unit_cells()
-    calculation_with_cylinder()
+    #mesh_refinement(test_case=True)
+    #calculation_mult_unit_cells(test_case=True)
+    #calculation_with_cylinder(test_case=True)
+    mesh_refinement(test_case=False)
+    calculation_mult_unit_cells(test_case=False)
+    calculation_with_cylinder(test_case=False)
+    calculation_mult_unit_cells(test_case=False, N_uc=3)
