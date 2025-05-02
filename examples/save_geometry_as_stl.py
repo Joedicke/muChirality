@@ -3,10 +3,9 @@ import os
 import shutil
 
 # Default path of the library
-sys.path.insert(0, os.path.join(os.getcwd(), "/usr/local/lib/python3.8/site-packages"))
-sys.path.insert(0, os.path.join(os.getcwd(), "../muspectre/meson-build-release/language_bindings/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "../muspectre/meson-build-release/language_bindings/libmufft/python"))
-sys.path.insert(0, os.path.join(os.getcwd(), "../muspectre/meson-build-release/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmugrid/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/libmufft/python"))
+sys.path.insert(0, os.path.join(os.getcwd(), "../../muspectre/builddir/language_bindings/python"))
 
 import numpy as np
 import meshio
@@ -38,9 +37,9 @@ def save_geometry_as_stl(nb_grid_pts, lengths, mask, output_file):
     x = np.linspace(0, lengths[0], Nx + 1, endpoint=True)
     y = np.linspace(0, lengths[1], Ny + 1, endpoint=True)
     z = np.linspace(0, lengths[2], Nz + 1, endpoint=True)
-    points = np.array(np.meshgrid(x, y, z))
-    points = np.transpose((points[0].ravel(order='F'), points[1].ravel(order='F'),
-                          points[2].ravel(order='F')))
+    points_iyxz = np.array(np.meshgrid(x, y, z))
+    points = np.transpose(points_iyxz, (2, 1, 3, 0))
+    points = points.reshape((-1, 3), order='F')
 
     # Triangles
     cells = []
@@ -187,17 +186,18 @@ def save_chiral_2_mult_unit_cells():
     radius_out = 0.4 * a
     radius_inn = 0.34 * a
     angle_mat = np.pi * 35 / 180
-    plates = True
+    plates = False
 
     # Discretization
-    Nx = 70
+    Nx = 100
     Ny = Nx
     Nz = Nx
     nb_grid_pts_uc = [Nx, Ny, Nz]
-    nb_unit_cells = [2, 2, 1]
+    nb_unit_cells = [1, 1, 1]
 
     # Folder for saving
-    folder = f'results/chiral2/'
+    #folder = f'results/chiral2/'
+    folder = f'results_paper/chiral_geometry_muspectre/'
 
     ### ----- Save geometry ----- ###
     # Geometry
@@ -221,7 +221,30 @@ def save_chiral_2_mult_unit_cells():
         name += f'x{nb_unit_cells[2]}_nb_grid_pts={Nx}x{Ny}x{Nz}.stl'
     save_geometry_as_stl(mask.shape, lengths, mask, name)
 
+def test_save():
+    ### ----- Parameter definitions ----- ###
+    # Discretization
+    nb_grid_pts = [10, 10, 10]
+
+    # Geometries
+    lengths = [1, 1, 1]
+    mask = np.zeros(nb_grid_pts)
+
+    for i in range(nb_grid_pts[0]):
+        mask[i, :, i] = 1
+
+    mask[-2, :, -2] = 0
+    mask[:, 0, 0] = 1
+
+    # For saving
+    folder = f'results_paper/chiral_geometry_muspectre/'
+    output_file = folder + 'test.stl'
+
+    ### ----- Save geometry ----- ###
+    save_geometry_as_stl(nb_grid_pts, lengths, mask, output_file)
+
 
 if __name__ == "__main__":
-    save_chiral_1()
-    #save_chiral_2_mult_unit_cells()
+    #save_chiral_1()
+    save_chiral_2_mult_unit_cells()
+    #test_save()
