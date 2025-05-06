@@ -197,7 +197,7 @@ def save_chiral_2_mult_unit_cells():
 
     # Folder for saving
     #folder = f'results/chiral2/'
-    folder = f'results_paper/chiral_geometry_muspectre/'
+    folder = f'results_paper/chiral_muspectre/chiral_geometry/'
 
     ### ----- Save geometry ----- ###
     # Geometry

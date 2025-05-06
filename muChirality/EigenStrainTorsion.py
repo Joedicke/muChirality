@@ -193,6 +193,7 @@ class EigenStrain:
         x_rot_axis = self.x_rot_axis
         y_rot_axis = self.y_rot_axis
         angle = self.angle
+        slice_y = self.slices[1]
 
         # x-y-coordinates of the centers of the 5 tetradras
         X, Y = np.meshgrid(x, y)
@@ -210,6 +211,11 @@ class EigenStrain:
         Y[2] += 0.75 * hy
         Y[3] += 0.25 * hy
         Y[4] += 0.75 * hy
+
+        # If pfft is used as fft in parallel simulations, the y-dimension is sliced
+        slice_y = self.slices[1]
+        X = X[:, :, slice_y]
+        Y = Y[:, :, slice_y]
 
         # Remove eigenstrain
         strain_field[0, 2] += 0.5 * angle * (Y[:, :, :, None] - y_rot_axis)
