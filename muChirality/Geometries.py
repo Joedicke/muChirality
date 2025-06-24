@@ -231,7 +231,7 @@ def rectangular_beam(nb_grid_pts, lengths, Lx, Ly):
     hz = lengths[2] / nb_grid_pts[2]
 
     L_void_x = (lengths[0] - Lx) / 2
-    L_void_y = (lengths[0] - Ly) / 2
+    L_void_y = (lengths[1] - Ly) / 2
 
     # Material
     mask = np.ones(nb_grid_pts)

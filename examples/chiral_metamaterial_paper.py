@@ -74,7 +74,7 @@ def mesh_refinement(test_case=False):
     # Discretization
     dim = 3
     if test_case:
-        N_list = [16, 30]
+        N_list = [20, 40] #[16, 30]
     else:
         N_list = [60, 80, 100, 120, 140, 160, 180, 200, 220, 240, 260, 280, 300,
                   320, 340, 360, 380, 400, 420, 440, 460, 480, 500]
@@ -431,14 +431,14 @@ def calculation_with_cylinder(test_case=False):
     gradient, weights = µ.linear_finite_elements.gradient_3d_5tet
 
     # Material
-    Young = 100
-    Poisson = 0
+    Young = 2600 # in MPa
+    Poisson = 0.4
 
     # Loading
     if test_case:
         twists = np.array([-0.1, 0.1, 0.2])
     else:
-        twists = np.array([-0.2, -0.15, -0.1, -0.05, 0, 0.05, 0.1, 0.15, -0.2])
+        twists = np.array([-0.1, -0.075, -0.05, -0.025, 0, 0.025, 0.05, 0.075, 0.1])
     delta_eps = np.zeros((3, 3))
 
     # Formulation
@@ -628,10 +628,10 @@ def calculation_with_cylinder(test_case=False):
         del stress
 
 if __name__ == "__main__":
-    #mesh_refinement(test_case=True)
+    mesh_refinement(test_case=True)
     #calculation_mult_unit_cells(test_case=True)
     #calculation_with_cylinder(test_case=True)
-    mesh_refinement(test_case=False)
-    calculation_mult_unit_cells(test_case=False)
-    calculation_with_cylinder(test_case=False)
-    calculation_mult_unit_cells(test_case=False, N_uc=3)
+    #mesh_refinement(test_case=False)
+    #calculation_mult_unit_cells(test_case=False)
+    #calculation_with_cylinder(test_case=False)
+    #calculation_mult_unit_cells(test_case=False, N_uc=3)
