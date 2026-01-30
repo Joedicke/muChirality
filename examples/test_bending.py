@@ -210,7 +210,7 @@ def plot_functions():
     ax.legend()
 
     # Show plots
-    plt.show()
+    #plt.show()
 
 def stress_indices(i_ax):
     if i_ax == 0:
@@ -410,7 +410,7 @@ def test_one_case(show):
 
     ax.legend()
 
-    plt.show()
+    #plt.show()
     name = f'results/bending/moment_N={Nx}x{Ny}x{Nz}.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
@@ -440,7 +440,7 @@ def test_one_case(show):
     axes[1].plot(x_def[:, 0], z_def[:, 0], color='black')
     axes[1].plot(x_def[:, -1], z_def[:, -1], color='black')
 
-    plt.show()
+    #plt.show()
     name = f'results/bending/deformed_beam_N={Nx}x{Ny}x{Nz}.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
@@ -486,7 +486,7 @@ def test_one_case(show):
             ax.set_title(title)
             ax.axis('off')
 
-    plt.show()
+    #plt.show()
     plt.close(fig)
 
     # Plot stress
@@ -525,7 +525,7 @@ def test_one_case(show):
             ax.axis('off')
 
     # Show
-    plt.show()
+    #plt.show()
     name = f'results/bending/stresses_N={Nx}x{Ny}x{Nz}.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
@@ -647,7 +647,7 @@ def test_convergences():
     ax.set_ylabel('Error of moment (%)')
     ax.plot(N_list, error_moment)
 
-    plt.show()
+    #plt.show()
     name = 'results/bending/moment.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
@@ -667,7 +667,7 @@ def test_convergences():
     axes[1].plot(N_list, error_stress[5], label=r'$\sigma_{yz}$')
     axes[1].legend()
 
-    plt.show()
+    #plt.show()
     name = 'results/bending/stresses.pdf'
     fig.savefig(name, bbox_inches='tight')
     plt.close(fig)
@@ -945,11 +945,12 @@ def calculation_paper():
     ax.plot(N_list, error_stiff, marker='x')
 
     # Show
-    plt.show()
+    #plt.show()
     name = folder + 'stiffnesses.pdf'
     fig.savefig(name, bbox_inches='tight')
 
 if __name__ == "__main__":
     # plot_functions()
-    # test_problem()
-    calculation_paper()
+    test_problem()
+    #test_convergences()
+    #calculation_paper()

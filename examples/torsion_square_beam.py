@@ -177,7 +177,7 @@ def calculation():
         solver = µ.solvers.KrylovSolverCG(cell, cg_tol, maxiter, verbose)
 
         # Initialize Eigen class
-        eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
+        eigen_class = EigenStrain(twist, lengths, nb_grid_pts, cell.fft_engine.subdomain_slices,
                                   x_rot_axis, y_rot_axis)
 
         # Solving

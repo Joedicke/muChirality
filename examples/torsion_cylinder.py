@@ -46,7 +46,7 @@ import matplotlib.pyplot as plt
 import muSpectre as µ
 from NuMPI import MPI
 from NuMPI.Tools import Reduction
-from NuMPI.IO import save_npy
+import muGrid
 
 from muChirality.EigenStrainTorsion import EigenStrain
 from muChirality.Geometries import cylinder
@@ -317,7 +317,9 @@ def calculation():
         solver = µ.solvers.KrylovSolverCG(cell, cg_tol, maxiter, verbose)
 
         # Initialize Eigen class
-        eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
+        #eigen_class = EigenStrain(cell.pixels, twist, lengths, nb_grid_pts,
+        #                          x_rot_axis, y_rot_axis)
+        eigen_class = EigenStrain(twist, lengths, nb_grid_pts, cell.fft_engine.subdomain_slices,
                                   x_rot_axis, y_rot_axis)
 
         # Solving
@@ -363,7 +365,6 @@ def calculation():
         #helper_yz = np.sum(stress_num[1, 2], axis=2)
         #helper_xz = np.sum(stress_num[0, 2], axis=2)
         #moment = 1/6 * stress_num[1, 2] * (X - x_rot_axis)
-        
 
         # Calculate detailed numerical moment in two cases
         if ((ind_N == 0) or (ind_N == len(Nxy_list)-1)) and\
@@ -411,31 +412,30 @@ def calculation():
         norm_stress_err = np.linalg.norm(error_stress) / np.linalg.norm(stress_ana) * 100
 
         if (ind_N == 0) or (ind_N == len(Nxy_list)-1):
-            f = folder + f'stresses_Nxy={Nxy}/'
-            if (MPI.COMM_WORLD.rank == 0):
-                print(f)
-                # Create folder
-                if not os.path.exists(f):
-                    os.makedirs(f)
-            for i_quad in range(cell.nb_quad_pts):
-                name_stress = f + f'stress_ana_quad_pt_{i_quad}_entry_'
-                save_npy((name_stress + '02.npy'), stress_ana[0, 2, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '12.npy'), stress_ana[1, 2, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                name_stress = f + f'error_stress_quad_pt_{i_quad}_entry_'
-                save_npy((name_stress + '00.npy'), error_stress[0, 0, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '01.npy'), error_stress[0, 1, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '02.npy'), error_stress[0, 2, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '11.npy'), error_stress[1, 1, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '12.npy'), error_stress[1, 2, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
-                save_npy((name_stress + '22.npy'), error_stress[2, 2, i_quad], tuple(cell.subdomain_locations),
-                         tuple(cell.nb_domain_grid_pts), MPI.COMM_WORLD)
+            comm = muGrid.Communicator(MPI.COMM_WORLD)
+            name_3D = folder + f'data_3D_Nxy={Nxy}.nc'
+            if os.path.exists(name_3D):
+                if comm.rank == 0:
+                    os.remove(name_3D)
+            MPI.COMM_WORLD.Barrier() # wait for rank 0 to delete the old netcdf file
+            file_io_object = muGrid.FileIONetCDF(
+                name_3D, muGrid.FileIONetCDF.OpenMode.Write, comm)
+
+            # Register field for saving analytical stress
+            fields = cell.get_field_collection()
+            fields.register_real_field('analytical_stress', components_shape=[3, 3], sub_division='quad_point')
+            helper = fields.get_field('analytical_stress').array()
+            helper[:] = stress_ana
+
+            # Register global fields of the cell which you want to write
+            file_io_object.register_field_collection(
+                field_collection=fields,
+                field_names=["analytical_stress", "stress"])
+
+            # Write values
+            file_io_object.append_frame().write(["analytical_stress"])
+            file_io_object.append_frame().write(["stress"])
+            file_io_object.close()
 
         if (MPI.COMM_WORLD.rank == 0) and ((ind_N == 0) or (ind_N == len(Nxy_list)-1)):
             f = folder + f'data_stress_error_nb_grid_pts={nb_grid_pts[0]}x'
